@@ -120,6 +120,7 @@ public class Objekt
         }
 
         /* Loop over both at the same time --> ToDo sorry that this looks so complicated */
+        // ToDo methods can be paras
         Objekt currPara = this.parameterList;
         Objekt compPara = methodObj.parameterList;
 
@@ -141,6 +142,9 @@ public class Objekt
             {
                 return false;
             }
+            /* This should only be important for methodObjekts as Parameters */
+            // Reuturn from method as parameter must be same as parameter type
+            // ToDo
             if ( currPara.getReturnType() != compPara.getReturnType() )
             {
                 return false;
@@ -148,22 +152,6 @@ public class Objekt
             currPara = currPara.getNextObj();
             compPara = compPara.getNextObj();
         }
-
-        //        while ( currPara != null && compPara != null )
-        //        {
-        //            if ( currPara.getName() != compPara.getName() )
-        //            {
-        //                return false;
-        //            }
-        //            if ( currPara.getType() != compPara.getType() )
-        //            {
-        //                return false;
-        //            }
-        //            currPara = currPara.getNextObj();
-        //            compPara = compPara.getNextObj();
-        //        }
-        //
-        //        return true;
     }
 
     /***************************************************************************/
@@ -188,11 +176,6 @@ public class Objekt
         this.next = obj;
     }
 
-    public ObjektConst getObjClasz()
-    {
-        return this.objClass;
-    }
-
     public boolean objClazEquals( ObjektConst objConst )
     {
         if ( this.objClass == null ) /* ToDo dangerous */
@@ -215,32 +198,25 @@ public class Objekt
         this.intValue = Long.parseLong( value );
     }
 
-    private Type getType()
-    {
-        return this.type;
-    }
-
     public Type getReturnType()
     {
         return this.returnType;
-    }
-
-    public Objekt getParameterList()
-    {
-        return this.parameterList;
     }
 
     public String toString()
     {
         StringBuilder str = new StringBuilder();
         str.append( "[" + name );
-        str.append( ": C " + objClass );
+        str.append( ": " + objClass );
 
         if ( type != null )
             str.append( ", T " + type );
 
         if ( intValue != null )
             str.append( ", V " + intValue );
+
+        if ( returnType != null )
+            str.append( ", R " + returnType );
 
         if ( parameterList != null )
         {
@@ -251,9 +227,6 @@ public class Objekt
                 currObjekt = currObjekt.getNextObj();
             }
         }
-
-        if ( returnType != null )
-            str.append( ", R " + returnType );
 
         // varDef
         // methodDef

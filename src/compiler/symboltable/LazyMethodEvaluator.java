@@ -39,6 +39,7 @@ public class LazyMethodEvaluator
     }
 
     /**
+     * --- outdate ---
      * Methods are added lazy because the parameters are assigned after the object is put,
      * making an on time evaluation pointless.
      * Currently only supports checking of the methods name was defined!

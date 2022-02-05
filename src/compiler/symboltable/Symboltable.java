@@ -83,7 +83,7 @@ public class Symboltable
     }
 
     /**
-     * Same as above but takes the name instead of
+     * Same as below but takes the name instead of.
      */
     private Objekt getObjektFromEnclosure( String name )
     {
@@ -139,6 +139,7 @@ public class Symboltable
 
     public void debugSymTable()
     {
+        System.out.println("\n=== Symboltable ===");
         debugSymTable( 0 );
     }
 
@@ -151,7 +152,7 @@ public class Symboltable
             tabs.append( "   " );
         }
 
-        System.out.println( "\n" + tabs + "#" + tableCounter + ". Tabelle (" );
+        System.out.println( tabs + "#" + tableCounter + ". Tabelle (" );
         tableCounter++;
 
         while ( currObjekt != null )
@@ -164,7 +165,7 @@ public class Symboltable
             }
             currObjekt = currObjekt.getNextObj();
         }
-        System.out.println( tabs + ")" );
+        System.out.println( tabs + ")\n" );
     }
 
     public Symboltable getEnclosure()

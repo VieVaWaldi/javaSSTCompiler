@@ -187,8 +187,7 @@ public class Parser
         // ADD TO list of methodDef of objekt class --> Is not needed though, only for method paras i think
         Symboltable symTabMethod = new Symboltable( symbolTableCurrent );
         lastMethodObj = new Objekt( con.getValue(), METHOD, null, symTabMethod, getLastCon().getSym() );
-//        symbolTableCurrent.putObjekt( lastMethodObj, con );
-        lazyMethodEvaluator.lazyMethodObjektPut( lastMethodObj, con ); // lastmethodObj changes this wont work
+        lazyMethodEvaluator.lazyMethodObjektPut( lastMethodObj, con );
 
         /* SYMTAB BLOCK --> method body always comes after */
         symbolTableCurrent = symTabMethod;
@@ -302,7 +301,7 @@ public class Parser
 
     /**
      * Expects one look before.
-     * Calls itself again on a valid statement.
+     * Calls itself again on a valid statement --> This kinda makes it my statement sequence
      */
     private void Statement()
                     throws EOFException
@@ -314,7 +313,7 @@ public class Parser
             if ( symEquals( EQUAL ) ) /* Must be assignment. */
             {
                 /* SYMTAB GET --> assignment of existing var */
-                debugSymTab( " > IDENT VAR ASSIGN: " + getLastCon().getValue() );
+                debugParser( " > IDENT VAR ASSIGN: " + getLastCon().getValue() );
                 symbolTableCurrent.getObject( getLastCon().getValue(), getLastCon() );
 
                 Assignment();
@@ -322,7 +321,7 @@ public class Parser
             else if ( symEquals( LPAREN ) ) /* Must be procedure_call,  assumes ident and lparen were already called! */
             {
                 /* SYMTAB GET and LAZY METHOD EVAL --> method (procedure) call */
-                debugSymTab( " > IDENT FUNC CALL NO ASSIGN: " + getLastCon().getValue() );
+                debugParser( " > IDENT FUNC CALL NO ASSIGN: " + getLastCon().getValue() );
                 lazyMethodEvaluator.lazyMethodObjektGet( getLastCon().getValue(), getLastCon() );
 
                 ProcedureCall();
@@ -352,6 +351,7 @@ public class Parser
             nextSym();
             Statement();
         }
+        /*If we arrive here the recursive statement sequence is over*/
     }
 
     /**
@@ -496,10 +496,6 @@ public class Parser
     private void Factor( boolean optional )
                     throws EOFException
     {
-        // method overload: if i create a new method, compare if the 2 methods share signature
-        // method independence: store all method gets
-        // when code run through
-        // see in classObj.symTab if there are the same methods
         nextSym();
         if ( symEquals( IDENT ) )
         {
@@ -507,16 +503,30 @@ public class Parser
             if ( symEquals( LPAREN ) ) /* assumes ident and lparen were already called! */
             {
                 /* SYMTAB GET and LAZY METHOD EVAL --> method (procedure) call i think */
-                debugSymTab( " > IDENT FUNC CALL ASSIGN: " + getLastCon().getValue() );
+                debugParser( " > IDENT FUNC CALL ASSIGN: " + getLastCon().getValue() );
+                // Objekt methodCallObj = new Objekt( getLastCon().getValue(), METHOD, null, null, null );
+                // SymbolContext methodCallCon = getLastCon(); // save context
                 lazyMethodEvaluator.lazyMethodObjektGet( getLastCon().getValue(), getLastCon() );
 
                 InternProcedureCall();
+
+                /* ToDo SYMTAB LAZY METHOD EVAL append parameters */
+                // appendParametersToMethodCallObj( methodCallObj );
+                // lazyMethodEvaluator.lazyMethodObjektGet( methodCallObj, methodCallCon );
+
+                // Eine Methode hier muss wenn ich sie lazy gette
+                    // die richtige anzahl an parametern, aus der ich mit get herausfinde
+                    // Naja, sobald du die anz paras hast bekommst du später mit get immer die
+                    // richtige methode. Und im späterem type check sollte das ausreichen
+                /* Ich will also getMETH nur mit 1. methName und 2. anz paras versorgen */
+                /* Gecallte methoden müssen immer return int sein, wir können kein void returnen */
+
                 nextSym();
             }
             else
             {
                 /* SYMTAB GET --> simple variable read */
-                debugSymTab( " > IDENT VAR USE: " + getLastCon().getValue() );
+                debugParser( " > IDENT VAR USE: " + getLastCon().getValue() );
                 symbolTableCurrent.getObject( getLastCon().getValue(), getLastCon() );
             }
         }
@@ -534,7 +544,7 @@ public class Parser
         /* ToDo I entered this else if after the BUG where method calls with 0 paras were faulty. Keep that in mind */
         else if ( symEquals( RPAREN ) )
         {
-//            nextSym();
+            // nextSym();
         }
         else if ( !optional )
         {
@@ -579,6 +589,61 @@ public class Parser
         throwErrIfSymNotEqual( symConst, em );
     }
 
+    /**
+     * Counts the number of parameters for method calls.
+     * Methods can be parameters
+     * Paras must be retrieved inversely
+     */
+    private void appendParametersToMethodCallObj( Objekt methodCallObj )
+    {
+        int i = lastConList.size() - 1;
+        ArrayList<Objekt> methodCallParaList = new ArrayList<>();
+
+        while ( 0 < i )
+        {
+            SymbolContext rmme = lastConList.get( i );
+
+            // simple parameter
+            if ( lastConList.get( i ).getSym() == LPAREN )
+            {
+                i--;
+                if ( lastConList.get( i ).getSym() == IDENT )
+                {
+                    // is a method in a method and therefore a para of the next outer method
+                    if ( lastConList.get( i - 1 ).getSym() == COMMA || lastConList.get( i - 1 ).getSym() == LPAREN )
+                    {
+                        // ToDo how do i get the type of this inner method
+                        // If have the right para count and can do it lazy
+                        methodCallParaList.add( new Objekt( lastConList.get( i ).getValue(), PARA, null, null ) );
+                        continue;
+                    }
+                    // is most outer method
+                    else
+                    {
+                        break;
+                    }
+                }
+                else
+                {
+                    System.out.println( "ERROR - Sorry" );
+                }
+            }
+
+            // simple para
+            if ( lastConList.get( i ).getSym() == IDENT )
+            {
+                methodCallParaList.add( new Objekt( lastConList.get( i ).getValue(), PARA, Int, null ) );
+            }
+            i--;
+        }
+
+        // loop reverse through list
+        for ( int j = methodCallParaList.size() - 1; j > 0; j-- )
+        {
+            methodCallObj.appendParaDef( methodCallParaList.get( j ) );
+        }
+    }
+
     private void syntaxError( SyntaxErrorMsgs em )
     {
         System.out.println( String.format( "$ SyntaxError at Line %s:%s with problematic symbol %s: \"%s\".\n$ %s",
@@ -596,7 +661,7 @@ public class Parser
         return lastConList.get( LAST_CON_IDX - n );
     }
 
-    private void debugSymTab( String msg )
+    private void debugParser( String msg )
     {
         if ( isDebugEnabledParser )
         {
