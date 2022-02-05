@@ -193,9 +193,9 @@ public class Objekt
         return symTab;
     }
 
-    public void setValue( String value )
+    public void setValue( long value )
     {
-        this.intValue = Long.parseLong( value );
+        this.intValue = value;
     }
 
     public Type getReturnType()

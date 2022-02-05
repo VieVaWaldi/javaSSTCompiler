@@ -14,6 +14,11 @@ import static compiler.symboltable.Type.Int;
 import java.io.EOFException;
 import java.util.ArrayList;
 
+import compiler.abstractsyntaxtree.Node;
+import compiler.abstractsyntaxtree.nodes.ClassVarNode;
+import compiler.abstractsyntaxtree.nodes.ClaszNode;
+import compiler.abstractsyntaxtree.nodes.ConstantNode;
+import compiler.abstractsyntaxtree.nodes.MethodNode;
 import compiler.helper.SymbolContext;
 import compiler.scanner.Scanner;
 import compiler.scanner.SymConst;
@@ -68,14 +73,17 @@ public class Parser
     /**
      * Entry point for the parser because every file needs to start with "class".
      */
-    public void Class()
+    public Node Class()
     {
         try
         {
+            Node claszNode;
+
             nextSym();
             if ( symEquals( CLASS ) )
             {
-                nextSymAndThrowErrIfNotEqual( IDENT, ERR_CLASS_NAME );
+                nextSymThrowErrIfNotEqual( IDENT, ERR_CLASS_NAME );
+                claszNode = new ClaszNode( con.getValue() );
 
                 /* SYMTAB SET and SYMTAB BLOCK */
                 Symboltable symTabClass = new Symboltable( symbolTableCurrent );
@@ -83,12 +91,14 @@ public class Parser
                 symbolTableCurrent = symTabClass;
                 lazyMethodEvaluator = new LazyMethodEvaluator( symTabClass );
 
-                Classbody();
+                claszNode.appendLeft( Classbody() );
 
                 lazyMethodEvaluator.startMethodObjektEvaluation();
 
                 if ( isDebugEnabledSymTab )
                     symbolTableHead.debugSymTable();
+
+                return claszNode;
             }
             else
             {
@@ -99,6 +109,8 @@ public class Parser
         {
             syntaxError( ERR_REACHED_EOF );
         }
+
+        return null;
     }
 
     /**
@@ -106,65 +118,104 @@ public class Parser
      *
      * @throws EOFException
      */
-    private void Classbody()
+    private Node Classbody()
                     throws EOFException
     {
-        nextSymAndThrowErrIfNotEqual( LBRACK, ERR_EXPECTED_LB );
-        Declarations();
+        nextSymThrowErrIfNotEqual( LBRACK, ERR_EXPECTED_LB );
+        Node classbodyNode = Declarations();
         throwErrIfSymNotEqual( RBRACK, ERR_EXPECTED_RB );
+
+        return classbodyNode;
     }
 
     /**
      * Performs one look ahead.
      * The three cases can't be mixed.
      */
-    private void Declarations()
+    private Node Declarations()
                     throws EOFException
     {
+        Node declarationNode = null;
+
         nextSym();
         while ( symEquals( FINAL ) )
         {
-            nextSymAndThrowErrIfNotEqual( INT, ERR_TYPE_MUST_INT );
-            nextSymAndThrowErrIfNotEqual( IDENT, ERR_IDENT_NOT_VALID );
+            nextSymThrowErrIfNotEqual( INT, ERR_TYPE_MUST_INT );
+            nextSymThrowErrIfNotEqual( IDENT, ERR_IDENT_NOT_VALID );
+
+            /* NODE CONSTANT CREATE */
+            ConstantNode constNode = new ConstantNode( con.getValue(), Int );
 
             /* SYMTAB SET --> constant */
-            // ADD TO list of constants of objekt class --> Is not needed though, only for method paras i think
             Objekt constantObj = new Objekt( con.getValue(), CONSTANT, Int, null );
             symbolTableCurrent.putObjekt( constantObj, con );
 
-            nextSymAndThrowErrIfNotEqual( EQUAL, ERR_EXPECTED_EQUAL );
+            nextSymThrowErrIfNotEqual( EQUAL, ERR_EXPECTED_EQUAL );
             Expression();
 
             /* SYMTAB SET --> If no expression set value of constant */
             if ( getLastCon( 1 ).getSym() == EQUAL && getLastCon().getSym() == NUMBER )
             {
-                constantObj.setValue( getLastCon().getValue() );
+                long value = Long.parseLong( getLastCon().getValue() );
+                constantObj.setValue( value );
+
+                /* NODE CONSTANT AND SYMTAB SET */
+                constNode.setConstantValue( value );
+                constNode.setObjekt( constantObj );
             }
 
             throwErrIfSymNotEqual( SEMICO, ERR_EXPECTED_SEMICO );
             nextSym();
+
+            /* NODE LINK */
+            declarationNode = setEmtpyOrLinkNewNode( declarationNode, constNode );
         }
 
         while ( symEquals( INT ) )
         {
-            nextSymAndThrowErrIfNotEqual( IDENT, ERR_IDENT_NOT_VALID );
+            nextSymThrowErrIfNotEqual( IDENT, ERR_IDENT_NOT_VALID );
+
+            /* NODE CONSTANT CREATE */
+            ClassVarNode classVarNode = new ClassVarNode( con.getValue(), Int );
 
             /* SYMTAB SET --> class var */
-            // ADD TO list of var_class of objekt class --> Is not needed though, only for method paras i think
             symbolTableCurrent.putObjekt( new Objekt( con.getValue(), CLASS_VAR, Int, null ), con );
 
-            nextSymAndThrowErrIfNotEqual( SEMICO, ERR_EXPECTED_SEMICO );
+            nextSymThrowErrIfNotEqual( SEMICO, ERR_EXPECTED_SEMICO );
             nextSym();
+
+            /* NODE LINK */
+            declarationNode = setEmtpyOrLinkNewNode( declarationNode, classVarNode );
         }
 
         while ( symEquals( PUBLIC ) )
         {
-            MethodDeclaration();
+            /* NODE METHOD CREATE */
+            MethodNode methodeNode = MethodDeclaration();
             nextSym();
+
+            /* NODE LINK */
+            declarationNode = setEmtpyOrLinkNewNode( declarationNode, methodeNode );
         }
+
+        return declarationNode;
     }
 
-    private void MethodDeclaration()
+    private Node setEmtpyOrLinkNewNode( Node topNode, Node insertNode )
+    {
+        /* Set empty or link new Node */
+        if ( topNode == null )
+        {
+            topNode = insertNode;
+        }
+        else
+        {
+            topNode.appendLink( insertNode );
+        }
+        return topNode;
+    }
+
+    private MethodNode MethodDeclaration()
                     throws EOFException
     {
         MethodHead();
@@ -172,6 +223,8 @@ public class Parser
 
         /* SYMTAB BLOCK EXIT --> method exit */
         symbolTableCurrent = symbolTableCurrent.getEnclosure();
+
+        return null;
     }
 
     /**
@@ -181,7 +234,7 @@ public class Parser
                     throws EOFException
     {
         MethodType();
-        nextSymAndThrowErrIfNotEqual( IDENT, ERR_IDENT_NOT_VALID );
+        nextSymThrowErrIfNotEqual( IDENT, ERR_IDENT_NOT_VALID );
 
         /* SYMTAB SET and METHOD OVERLOAD --> method void or int type */
         // ADD TO list of methodDef of objekt class --> Is not needed though, only for method paras i think
@@ -214,7 +267,7 @@ public class Parser
     private void FormalParameters()
                     throws EOFException
     {
-        nextSymAndThrowErrIfNotEqual( LPAREN, ERR_EXPECTED_LP );
+        nextSymThrowErrIfNotEqual( LPAREN, ERR_EXPECTED_LP );
         FpSection();
         throwErrIfSymNotEqual( RPAREN, ERR_EXPECTED_RP );
     }
@@ -229,7 +282,7 @@ public class Parser
         nextSym();
         if ( symEquals( INT ) )
         {
-            nextSymAndThrowErrIfNotEqual( IDENT, ERR_IDENT_NOT_VALID );
+            nextSymThrowErrIfNotEqual( IDENT, ERR_IDENT_NOT_VALID );
 
             /* SYMTAB SET and SYMTAB PARA LIST --> first para if not null, must be int */
             symbolTableCurrent.putObjekt( new Objekt( con.getValue(), PARA, Int, null ), con );
@@ -238,8 +291,8 @@ public class Parser
             nextSym();
             while ( symEquals( COMMA ) )
             {
-                nextSymAndThrowErrIfNotEqual( INT, ERR_TYPE_MUST_INT );
-                nextSymAndThrowErrIfNotEqual( IDENT, ERR_IDENT_NOT_VALID );
+                nextSymThrowErrIfNotEqual( INT, ERR_TYPE_MUST_INT );
+                nextSymThrowErrIfNotEqual( IDENT, ERR_IDENT_NOT_VALID );
 
                 /* SYMTAB SET and SYMTAB PARA LIST --> n paras if not null, must be int */
                 symbolTableCurrent.putObjekt( new Objekt( con.getValue(), PARA, Int, null ), con );
@@ -253,7 +306,7 @@ public class Parser
     private void MethodBody()
                     throws EOFException
     {
-        nextSymAndThrowErrIfNotEqual( LBRACK, ERR_EXPECTED_LB );
+        nextSymThrowErrIfNotEqual( LBRACK, ERR_EXPECTED_LB );
         LocalDeclaration();
         StatementSequence();
         throwErrIfSymNotEqual( RBRACK, ERR_EXPECTED_RB );
@@ -269,12 +322,12 @@ public class Parser
         nextSym();
         while ( symEquals( INT ) )
         {
-            nextSymAndThrowErrIfNotEqual( IDENT, ERR_IDENT_NOT_VALID );
+            nextSymThrowErrIfNotEqual( IDENT, ERR_IDENT_NOT_VALID );
 
             /* SYMTAB SET --> first var def in method */
             symbolTableCurrent.putObjekt( new Objekt( con.getValue(), METHOD_VAR, Int, null ), con );
 
-            nextSymAndThrowErrIfNotEqual( SEMICO, ERR_EXPECTED_SEMICO );
+            nextSymThrowErrIfNotEqual( SEMICO, ERR_EXPECTED_SEMICO );
             nextSym();
         }
     }
@@ -374,7 +427,7 @@ public class Parser
                     throws EOFException
     {
         InternProcedureCall();
-        nextSymAndThrowErrIfNotEqual( SEMICO, ERR_EXPECTED_SEMICO );
+        nextSymThrowErrIfNotEqual( SEMICO, ERR_EXPECTED_SEMICO );
     }
 
     private void InternProcedureCall()
@@ -402,18 +455,18 @@ public class Parser
     private void If()
                     throws EOFException
     {
-        nextSymAndThrowErrIfNotEqual( LPAREN, ERR_EXPECTED_LP );
+        nextSymThrowErrIfNotEqual( LPAREN, ERR_EXPECTED_LP );
         Expression();
         throwErrIfSymNotEqual( RPAREN, ERR_EXPECTED_RP );
-        nextSymAndThrowErrIfNotEqual( LBRACK, ERR_EXPECTED_LB );
+        nextSymThrowErrIfNotEqual( LBRACK, ERR_EXPECTED_LB );
 
         /* SYMTAB BLOCK --> Cant declare vars in here */
 
         nextSym();
         StatementSequence();
         throwErrIfSymNotEqual( RBRACK, ERR_EXPECTED_RB );
-        nextSymAndThrowErrIfNotEqual( ELSE, ERR_EXPECTED_LB );
-        nextSymAndThrowErrIfNotEqual( LBRACK, ERR_EXPECTED_LB );
+        nextSymThrowErrIfNotEqual( ELSE, ERR_EXPECTED_LB );
+        nextSymThrowErrIfNotEqual( LBRACK, ERR_EXPECTED_LB );
 
         /* SYMTAB BLOCK --> Cant declare vars in here */
 
@@ -428,10 +481,10 @@ public class Parser
     private void While()
                     throws EOFException
     {
-        nextSymAndThrowErrIfNotEqual( LPAREN, ERR_EXPECTED_LP );
+        nextSymThrowErrIfNotEqual( LPAREN, ERR_EXPECTED_LP );
         Expression();
         throwErrIfSymNotEqual( RPAREN, ERR_EXPECTED_RP );
-        nextSymAndThrowErrIfNotEqual( LBRACK, ERR_EXPECTED_LB );
+        nextSymThrowErrIfNotEqual( LBRACK, ERR_EXPECTED_LB );
 
         /* SYMTAB BLOCK --> Cant declare vars in here */
 
@@ -515,9 +568,9 @@ public class Parser
                 // lazyMethodEvaluator.lazyMethodObjektGet( methodCallObj, methodCallCon );
 
                 // Eine Methode hier muss wenn ich sie lazy gette
-                    // die richtige anzahl an parametern, aus der ich mit get herausfinde
-                    // Naja, sobald du die anz paras hast bekommst du später mit get immer die
-                    // richtige methode. Und im späterem type check sollte das ausreichen
+                // die richtige anzahl an parametern, aus der ich mit get herausfinde
+                // Naja, sobald du die anz paras hast bekommst du später mit get immer die
+                // richtige methode. Und im späterem type check sollte das ausreichen
                 /* Ich will also getMETH nur mit 1. methName und 2. anz paras versorgen */
                 /* Gecallte methoden müssen immer return int sein, wir können kein void returnen */
 
@@ -582,7 +635,7 @@ public class Parser
         }
     }
 
-    private void nextSymAndThrowErrIfNotEqual( SymConst symConst, SyntaxErrorMsgs em )
+    private void nextSymThrowErrIfNotEqual( SymConst symConst, SyntaxErrorMsgs em )
                     throws EOFException
     {
         nextSym();

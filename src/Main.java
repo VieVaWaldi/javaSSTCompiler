@@ -1,5 +1,7 @@
 import java.io.EOFException;
 
+import compiler.abstractsyntaxtree.DotASTCreator;
+import compiler.abstractsyntaxtree.Node;
 import compiler.parser.Parser;
 import compiler.scanner.Input;
 import compiler.scanner.Scanner;
@@ -12,8 +14,18 @@ public class Main
 
     public static void main( String[] args )
     {
-        //        testRun_Scanner();
+        // testRun_Scanner();
         testRun_Parser();
+    }
+
+    private static void testRun_Parser()
+    {
+        Parser parser = new Parser( new Scanner( new Input( source_2 ) ) );
+
+        Node root = parser.Class();
+
+        DotASTCreator dotASTCreator = new DotASTCreator( "./ast.dot" );
+        dotASTCreator.createDotTree( root );
     }
 
     private static void testRun_Scanner()
@@ -35,12 +47,5 @@ public class Main
         {
             System.out.print( "End of file." );
         }
-    }
-
-    private static void testRun_Parser()
-    {
-        Parser parser = new Parser( new Scanner( new Input( source_2 ) ) );
-
-        parser.Class();
     }
 }
