@@ -11,14 +11,17 @@ import static compiler.symboltable.ObjektConst.PARA;
 import static compiler.symboltable.Type.Clasz;
 import static compiler.symboltable.Type.Int;
 
+import java.beans.Expression;
 import java.io.EOFException;
 import java.util.ArrayList;
 
 import compiler.abstractsyntaxtree.Node;
+import compiler.abstractsyntaxtree.nodes.AssignmentNode;
 import compiler.abstractsyntaxtree.nodes.ClassVarNode;
 import compiler.abstractsyntaxtree.nodes.ClaszNode;
 import compiler.abstractsyntaxtree.nodes.ConstantNode;
 import compiler.abstractsyntaxtree.nodes.MethodNode;
+import compiler.abstractsyntaxtree.nodes.ParameterNode;
 import compiler.helper.SymbolContext;
 import compiler.scanner.Scanner;
 import compiler.scanner.SymConst;
@@ -143,17 +146,19 @@ public class Parser
             nextSymThrowErrIfNotEqual( INT, ERR_TYPE_MUST_INT );
             nextSymThrowErrIfNotEqual( IDENT, ERR_IDENT_NOT_VALID );
 
-            /* NODE CONSTANT CREATE */
-            ConstantNode constNode = new ConstantNode( con.getValue(), Int );
-
             /* SYMTAB SET --> constant */
             Objekt constantObj = new Objekt( con.getValue(), CONSTANT, Int, null );
             symbolTableCurrent.putObjekt( constantObj, con );
 
-            nextSymThrowErrIfNotEqual( EQUAL, ERR_EXPECTED_EQUAL );
-            Expression();
+            /* NODE CONSTANT CREATE */
+            ConstantNode constNode = new ConstantNode( con.getValue(), Int, constantObj );
 
-            /* SYMTAB SET --> If no expression set value of constant */
+            nextSymThrowErrIfNotEqual( EQUAL, ERR_EXPECTED_EQUAL );
+
+            /* NODE ASSIGNMENT --> FROM PARSER */
+            AssignmentNode assignmentNode = new AssignmentNode( constNode, Expression() );
+
+            /* SYMTAB SET --> If no expression get and set value of constant */
             if ( getLastCon( 1 ).getSym() == EQUAL && getLastCon().getSym() == NUMBER )
             {
                 long value = Long.parseLong( getLastCon().getValue() );
@@ -161,18 +166,25 @@ public class Parser
 
                 /* NODE CONSTANT AND SYMTAB SET */
                 constNode.setConstantValue( value );
-                constNode.setObjekt( constantObj );
             }
 
             throwErrIfSymNotEqual( SEMICO, ERR_EXPECTED_SEMICO );
             nextSym();
 
-            /* NODE LINK */
-            declarationNode = setEmtpyOrLinkNewNode( declarationNode, constNode );
+            /* NODE LINK, when there was an expression link assignment */
+            if ( assignmentNode.getRight() != null )
+            {
+                declarationNode = linkNewNode( declarationNode, assignmentNode );
+            }
+            else
+            {
+                declarationNode = linkNewNode( declarationNode, constNode );
+            }
         }
 
         while ( symEquals( INT ) )
         {
+            /* ToDo Class_Var can be ignored, not needed in tree  */
             nextSymThrowErrIfNotEqual( IDENT, ERR_IDENT_NOT_VALID );
 
             /* NODE CONSTANT CREATE */
@@ -185,7 +197,7 @@ public class Parser
             nextSym();
 
             /* NODE LINK */
-            declarationNode = setEmtpyOrLinkNewNode( declarationNode, classVarNode );
+            declarationNode = linkNewNode( declarationNode, classVarNode );
         }
 
         while ( symEquals( PUBLIC ) )
@@ -195,42 +207,30 @@ public class Parser
             nextSym();
 
             /* NODE LINK */
-            declarationNode = setEmtpyOrLinkNewNode( declarationNode, methodeNode );
+            declarationNode = linkNewNode( declarationNode, methodeNode );
         }
 
         return declarationNode;
     }
 
-    private Node setEmtpyOrLinkNewNode( Node topNode, Node insertNode )
-    {
-        /* Set empty or link new Node */
-        if ( topNode == null )
-        {
-            topNode = insertNode;
-        }
-        else
-        {
-            topNode.appendLink( insertNode );
-        }
-        return topNode;
-    }
-
     private MethodNode MethodDeclaration()
                     throws EOFException
     {
-        MethodHead();
-        MethodBody();
+        /* NODE METHOD HEAD AND BODY left */
+        MethodNode methodNode = MethodHead();
+        /* ToDo Node append left from first para or link to last para. I choose left for now */
+        methodNode.appendLeft( MethodBody() );
 
         /* SYMTAB BLOCK EXIT --> method exit */
         symbolTableCurrent = symbolTableCurrent.getEnclosure();
 
-        return null;
+        return methodNode;
     }
 
     /**
      * Assumes PUBLIC has already been checked!
      */
-    private void MethodHead()
+    private MethodNode MethodHead()
                     throws EOFException
     {
         MethodType();
@@ -245,7 +245,11 @@ public class Parser
         /* SYMTAB BLOCK --> method body always comes after */
         symbolTableCurrent = symTabMethod;
 
-        FormalParameters();
+        /* NODE METHOD CREATE */
+        MethodNode methodNode = new MethodNode( con.getValue(), getLastCon().getSym(), lastMethodObj );
+        methodNode.appendLeft( FormalParameters() );
+
+        return methodNode;
     }
 
     /**
@@ -264,29 +268,37 @@ public class Parser
     /**
      * Hier brauche ich die erste Vorschau von 2.
      */
-    private void FormalParameters()
+    private ParameterNode FormalParameters()
                     throws EOFException
     {
         nextSymThrowErrIfNotEqual( LPAREN, ERR_EXPECTED_LP );
-        FpSection();
+        ParameterNode paraNode = FpSection();
         throwErrIfSymNotEqual( RPAREN, ERR_EXPECTED_RP );
+        return paraNode;
     }
 
     /**
      * Performs one look ahead.
      * Recursively checks if is a FpSection.
      */
-    private void FpSection()
+    private ParameterNode FpSection()
                     throws EOFException
     {
+        ParameterNode paraNode = null;
+
         nextSym();
         if ( symEquals( INT ) )
         {
             nextSymThrowErrIfNotEqual( IDENT, ERR_IDENT_NOT_VALID );
 
             /* SYMTAB SET and SYMTAB PARA LIST --> first para if not null, must be int */
-            symbolTableCurrent.putObjekt( new Objekt( con.getValue(), PARA, Int, null ), con );
+            Objekt paraObj = new Objekt( con.getValue(), PARA, Int, null );
+            symbolTableCurrent.putObjekt( paraObj, con );
             lastMethodObj.appendParaDef( new Objekt( con.getValue(), PARA, Int, null ) );
+            // ToDo see why this cant be paraObj, and if that has consequences (below as well), shouldnt be because this just makes the method obj signature
+
+            /* NODE PARAMETER */
+            paraNode = new ParameterNode( con.getValue(), paraObj );
 
             nextSym();
             while ( symEquals( COMMA ) )
@@ -295,26 +307,40 @@ public class Parser
                 nextSymThrowErrIfNotEqual( IDENT, ERR_IDENT_NOT_VALID );
 
                 /* SYMTAB SET and SYMTAB PARA LIST --> n paras if not null, must be int */
-                symbolTableCurrent.putObjekt( new Objekt( con.getValue(), PARA, Int, null ), con );
+                paraObj = new Objekt( con.getValue(), PARA, Int, null );
+                symbolTableCurrent.putObjekt( paraObj, con );
                 lastMethodObj.appendParaDef( new Objekt( con.getValue(), PARA, Int, null ) );
+
+                /* NODE PARAMETER */
+                paraNode.appendLink( new ParameterNode( con.getValue(), paraObj ) );
 
                 nextSym();
             }
         }
+
+        return null; /* NODE We dont need parameters in the ast */
     }
 
-    private void MethodBody()
+    private Node MethodBody()
                     throws EOFException
     {
         nextSymThrowErrIfNotEqual( LBRACK, ERR_EXPECTED_LB );
         LocalDeclaration();
-        StatementSequence();
+
+        /* NODE STATEMENT IN METHOD */
+        /* ToDo Node append left from first para or link to last para. I choose left for now */
+        Node statementNode = StatementSequence();
         throwErrIfSymNotEqual( RBRACK, ERR_EXPECTED_RB );
+
+        return statementNode;
     }
 
     /**
      * Performs one look ahead.
      * Calls itself recursively if a local declaration was found.
+     * <p>
+     * Local method variables are not welcome in the AST.
+     * </p>
      */
     private void LocalDeclaration()
                     throws EOFException
@@ -325,7 +351,8 @@ public class Parser
             nextSymThrowErrIfNotEqual( IDENT, ERR_IDENT_NOT_VALID );
 
             /* SYMTAB SET --> first var def in method */
-            symbolTableCurrent.putObjekt( new Objekt( con.getValue(), METHOD_VAR, Int, null ), con );
+            Objekt classVarObj = new Objekt( con.getValue(), METHOD_VAR, Int, null );
+            symbolTableCurrent.putObjekt( classVarObj, con );
 
             nextSymThrowErrIfNotEqual( SEMICO, ERR_EXPECTED_SEMICO );
             nextSym();
@@ -337,28 +364,34 @@ public class Parser
      * Performs one look ahead.
      * Expects at least one statement plus infinite more optional ones.
      */
-    private void StatementSequence()
+    private Node StatementSequence()
                     throws EOFException
     {
+        Node statementNode = null;
+
         // these are called again with no sym.next in statement
         if ( symEquals( IDENT ) || symEquals( IF ) || symEquals( WHILE ) || symEquals(
                         RETURN ) ) // checks double but i dont know how else to do it
         {
-            Statement();
+            statementNode = Statement();
         }
         else
         {
             syntaxError( ERR_NO_STATE );
         }
+
+        return statementNode;
     }
 
     /**
      * Expects one look before.
      * Calls itself again on a valid statement --> This kinda makes it my statement sequence
      */
-    private void Statement()
+    private Node Statement()
                     throws EOFException
     {
+        Node statementNode = null;
+
         if ( symEquals( IDENT ) )
         {
             /* Can be assignment OR procedure_call -> get next char, store last? */
@@ -368,6 +401,8 @@ public class Parser
                 /* SYMTAB GET --> assignment of existing var */
                 debugParser( " > IDENT VAR ASSIGN: " + getLastCon().getValue() );
                 symbolTableCurrent.getObject( getLastCon().getValue(), getLastCon() );
+
+                //                statementNode = new Node();
 
                 Assignment();
             }
@@ -405,6 +440,8 @@ public class Parser
             Statement();
         }
         /*If we arrive here the recursive statement sequence is over*/
+
+        return statementNode;
     }
 
     /**
@@ -506,7 +543,7 @@ public class Parser
     /**
      * Performs one look ahead.
      */
-    private void Expression()
+    private Node Expression()
                     throws EOFException
     {
         SimpleExpression( false );
@@ -516,6 +553,8 @@ public class Parser
         {
             SimpleExpression( false );
         }
+
+        return null;
     }
 
     /**
@@ -695,6 +734,20 @@ public class Parser
         {
             methodCallObj.appendParaDef( methodCallParaList.get( j ) );
         }
+    }
+
+    private Node linkNewNode( Node topNode, Node insertNode )
+    {
+        /* Set empty or link new Node */
+        if ( topNode == null )
+        {
+            topNode = insertNode;
+        }
+        else
+        {
+            topNode.appendLink( insertNode );
+        }
+        return topNode;
     }
 
     private void syntaxError( SyntaxErrorMsgs em )

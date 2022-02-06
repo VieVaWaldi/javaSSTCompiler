@@ -9,22 +9,18 @@ public class ConstantNode
                 extends Node
 {
 
-    public ConstantNode( String name, Type type )
+    public ConstantNode( String name, Type type, Objekt obj )
     {
         this.nodeClasz = NodeClasz.CONSTANT;
         this.name = name;
         this.type = type;
+        this.obj = obj;
     }
 
     /* Cant be assigned if value is an expression*/
     public void setConstantValue( long value )
     {
         this.constant = value;
-    }
-
-    public void setObjekt( Objekt obj )
-    {
-        this.obj = obj;
     }
 
 }

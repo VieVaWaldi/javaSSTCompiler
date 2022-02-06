@@ -45,7 +45,7 @@ public class DotASTCreator
             sb.append( "nodesep=0.3;\n" );
             sb.append( "ranksep=0.2;\n" );
             sb.append( "margin=0.1;\n" );
-            sb.append( "node [shape=circle];\n" );
+            sb.append( "node [shape=box];\n" );
             sb.append( "edge [arrowsize=0.8];\n\n" );
 
             StringBuilder sbTree = traversePrint( root, new StringBuilder() );
@@ -71,22 +71,22 @@ public class DotASTCreator
 
         while ( node != null )
         {
-            sb.append( String.format( "%s [label=\"%s\"];\n", node.name, node.name ) );
+            sb.append( String.format( "%s [label=\"%s\"];\n", node.getName(), node.toDotString() ) );
 
             if ( node.left != null )
             {
-                sb.append( String.format( "%s -> %s;\n", node.name, node.left.name ) );
+                sb.append( String.format( "%s -> %s;\n", node.getName(), node.left.getName() ) );
                 traversePrint( node.getLeft(), sb );
             }
             if ( node.right != null )
             {
-                sb.append( String.format( "%s -> %s;\n", node.name, node.right.name ) );
+                sb.append( String.format( "%s -> %s;\n", node.getName(), node.right.getName() ) );
                 traversePrint( node.getRight(), sb );
             }
             if ( node.link != null )
             {
-                sb.append( String.format( "%s -> %s;\n", node.name, node.link.name ) );
-                sbRank.append( String.format( "\n{ rank=same; %s; %s; }", node.name, node.link.name ) );
+                sb.append( String.format( "%s -> %s;\n", node.getName(), node.link.getName() ) );
+                sbRank.append( String.format( "{ rank=same; %s; %s; }\n", node.getName(), node.link.getName() ) );
             }
             node = node.getLink();
         }

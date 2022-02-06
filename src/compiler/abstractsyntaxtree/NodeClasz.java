@@ -9,5 +9,7 @@ public enum NodeClasz
     PARA,
     METHOD_VAR,
 
+    ASSIGNMENT,
+
 
 }

@@ -242,5 +242,9 @@ public class Objekt
         System.exit( 1 );
     }
 
+    public Objekt getParameter()
+    {
+        return this.parameterList;
+    }
 }
 
