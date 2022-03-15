@@ -7,10 +7,12 @@ import java.io.IOException;
 public class DotASTCreator
 {
     private String fileName;
+    private boolean isTrueRePresentation;
 
-    public DotASTCreator( String fileName )
+    public DotASTCreator( String fileName, boolean isTrueRePresentation )
     {
         this.fileName = fileName;
+        this.isTrueRePresentation = isTrueRePresentation;
 
         try
         {
@@ -71,22 +73,26 @@ public class DotASTCreator
 
         while ( node != null )
         {
-            sb.append( String.format( "%s [label=\"%s\"];\n", node.getName(), node.toDotString() ) );
+            sb.append( String.format( "%s [label=\"%s\"];\n", node.getDotName(), node.toDotString() ) );
 
             if ( node.left != null )
             {
-                sb.append( String.format( "%s -> %s;\n", node.getName(), node.left.getName() ) );
+                sb.append( String.format( "%s -> %s;\n", node.getDotName(), node.left.getDotName() ) );
                 traversePrint( node.getLeft(), sb );
             }
             if ( node.right != null )
             {
-                sb.append( String.format( "%s -> %s;\n", node.getName(), node.right.getName() ) );
+                sb.append( String.format( "%s -> %s;\n", node.getDotName(), node.right.getDotName() ) );
                 traversePrint( node.getRight(), sb );
             }
             if ( node.link != null )
             {
-                sb.append( String.format( "%s -> %s;\n", node.getName(), node.link.getName() ) );
-                sbRank.append( String.format( "{ rank=same; %s; %s; }\n", node.getName(), node.link.getName() ) );
+                sb.append( String.format( "%s -> %s;\n", node.getDotName(), node.link.getDotName() ) );
+                if ( isTrueRePresentation )
+                {
+                    sbRank.append( String.format( "{ rank=same; %s; %s; }\n", node.getDotName(),
+                                    node.link.getDotName() ) );
+                }
             }
             node = node.getLink();
         }

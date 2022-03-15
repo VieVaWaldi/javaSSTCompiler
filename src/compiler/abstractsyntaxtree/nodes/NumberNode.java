@@ -1,23 +1,20 @@
 package compiler.abstractsyntaxtree.nodes;
 
-import static compiler.symboltable.Type.Int;
-
 import compiler.abstractsyntaxtree.Node;
 import compiler.abstractsyntaxtree.NodeClasz;
-import compiler.symboltable.Objekt;
+import compiler.symboltable.Type;
 
-public class MethodVarNode
+public class NumberNode
                 extends Node
 {
     private static int DOT_COUNTER = 0;
 
-    public MethodVarNode( String name, Objekt obj )
+    public NumberNode( String name )
     {
         this.nodeClasz = NodeClasz.METHOD_VAR;
-        this.type = Int;
+        this.type = Type.Int;
 
         this.name = name;
-        this.dotName = name + "_" + DOT_COUNTER++;
-        this.obj = obj;
+        this.dotName = "N" + this.name + "_" + DOT_COUNTER++;
     }
 }

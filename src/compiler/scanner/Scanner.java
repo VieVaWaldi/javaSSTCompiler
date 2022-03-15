@@ -8,7 +8,6 @@ import compiler.helper.SymbolContext;
  * 1. Phase: Responsible for the lexical analysis. Generates symbols (tokens) from
  * the character provided by @(Input). Keeps context for the symbols
  * in regard to the line and column in the source code.
- * REALLY?! Only concerns itself with termination symbols
  * </br>
  * Cleans the source code of all unnecessary characters like space, tab,
  * control characters etc. And throws an error on unexpected states.

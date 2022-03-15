@@ -13,6 +13,8 @@ public abstract class Node
 {
     protected String name; // ? can this be done nicer
 
+    protected String dotName;
+
     protected Node left;
 
     protected Node right;
@@ -82,18 +84,40 @@ public abstract class Node
         return this.link;
     }
 
-    public String getName() {
+    public String getName()
+    {
         return this.name;
+    }
+
+    public Type getType()
+    {
+        return this.type;
+    }
+
+    public String getDotName()
+    {
+        if ( dotName != null )
+        {
+            return this.dotName;
+        }
+        else
+        {
+            return this.name;
+        }
     }
 
     public String toDotString()
     {
         StringBuilder sb = new StringBuilder();
-        sb.append( this.name + ": " + this.nodeClasz );
-        if ( this.nodeSubClasz != null )
-        {
-            sb.append( "." + this.nodeSubClasz );
-        }
+
+        sb.append( this.name );
+
+        // sb.append( " " + this.nodeClasz );
+        // if ( this.nodeSubClasz != null )
+        // {
+        //     sb.append( "." + this.nodeSubClasz );
+        // }
+        
         if ( this.type != null )
         {
             sb.append( "\\nType: " + this.type );
@@ -102,6 +126,19 @@ public abstract class Node
                 sb.append( ", Value: " + this.constant );
             }
         }
+        if ( this.obj != null )
+        {
+            sb.append( ", hasST" );
+        }
         return sb.toString();
     }
+
+    /* For mistakes i made. */
+    protected void error( String msg )
+    {
+        System.out.println( "Sorry but the dev made a mistake ..." );
+        System.out.println( msg );
+        System.exit( 1 );
+    }
+
 }

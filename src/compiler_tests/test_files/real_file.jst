@@ -1,10 +1,14 @@
 
-class GenesisBlock {
+class GenesisClass {
 	final int var1 = 0;
 	final int var2 = 2;
 	final int var3 = 127 - 0;
 	final int var4 = 3;
 	final int var5 = 100 ;
+
+	/* QUESTION --> geht nicht oder? */
+	// ERR final int negativ = -100;
+
 	/* ERR SAME VARIABLE NAME */
 	// ERR final int var5 = 102;
 	/* FT METHOD SAME NAME AS VAR ALLOWED */
@@ -21,14 +25,16 @@ class GenesisBlock {
     // ERR }
 
     /* FT Overload */
-    public void meth1(int m) {
+    // ToDo ReturnType Void missing in AST
+    public void meth1(int m) { //!!!! OERLOAD NUR MIT UNTERSCHIEDLICHEN PARAMETERN
        return m;
     }
 
     /* FT Overload */
+    // ToDo Add Method Para to AST?
     public int meth1(int m) {
         /* BUG FIX NO PARA METHOD CALL */
-       return meth1() ;
+       return meth1();
     }
 	
 	public void meth1() {
@@ -38,9 +44,13 @@ class GenesisBlock {
 		int langerVariablenName;
 
         langerVariablenName = 41321234;
+        // ToDo +13 missing
 		m1 = 10 + 13 - 22 / 45;
 		m2 = 20 + m2;
 		m3 = 0 + 5*m2;
+
+        /* WIP SOLL DAS GEHEN */
+		//m3 = 1 < 2;
 
 		while(m1 < m2) {
 		    /* ERR VAR GIBT ES */
@@ -61,18 +71,25 @@ class GenesisBlock {
 			}
 		}
 
-		meth2(m1,m2);
+        /* BUG, ToDo evaluate Paras using AST */
+        // meth2(m1, m3+1/7);
+		// meth2(m1, m3+1/7, m3);
 
+		/* FT METHOD CALL WITH METHOD AS PARA */
+		m2 = meth2(m2, meth2(m1,m3));
 		m2 = meth2(meth2(m1,m3), m2);
-		/* WIP FT METHOD CALL WITH METHOD AS PARA */
-		// WIP m2 = meth2(meth2(meth2(m1,m2),m3), meth2(meth2(m1,m2),m2));
+		m2 = meth2(meth2(meth2(m1,m2),m3), meth2(meth2(m1,m2),m2));
 
-        /* WIP ERR WRONG PARA METHOD CALL --> AST? */
-		m3 = meth2(m1+3-10,m2,m3); //ERR
+        /* ERR METHOD DOESNT EXIST */
+        // ERR m3 = meth3();
+        // ERR meth3();
 
-		/* ERR METHOD DOESNT EXIST */
-		// ERR m3 = meth3();
-		// ERR meth3();
+		/* ERR WRONG PARA COUNT */
+		// ERR m3 = meth2(m1,meth1(), meth1(m1));
+		// ERR m2 = meth2(meth2(meth2(m1,m2),m3), meth2(meth2(m1,m2),m2), m3);
+
+        /* BUG meth2 takes 2 paras, this expression is 1  */
+        // BUG m3 = meth2(m1+m3);
 		
 		return;
 	}

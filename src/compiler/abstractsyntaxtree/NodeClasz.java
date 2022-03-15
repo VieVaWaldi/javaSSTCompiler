@@ -9,7 +9,12 @@ public enum NodeClasz
     PARA,
     METHOD_VAR,
 
-    ASSIGNMENT,
+    EXPRESSION,
+    BINOPS,
+    UNOPS,
 
-
+    IFELSE,
+    IF,
+    WHILE,
+    RETURN
 }

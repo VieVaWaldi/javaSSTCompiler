@@ -18,14 +18,15 @@ public class MethodNode
     public MethodNode( String name, SymConst returnType, Objekt obj )
     {
         this.nodeClasz = NodeClasz.METHOD;
-        this.name = name + "_" + DOT_COUNTER++;
+        this.name = name; /* ToDo do we need method signature as name? */
+        this.dotName = name + "_" + DOT_COUNTER++;
 
         if ( returnType == INT )
             this.type = Int;
         else if ( returnType == VOID )
             this.type = Void;
         else
-            System.out.println( "ERROR" );
+            error( "Method got wrong return type, must be int or void." );
 
         this.obj = obj;
     }

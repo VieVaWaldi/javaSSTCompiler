@@ -114,18 +114,24 @@ public class Objekt
 
     public boolean methodSignatureIsEqualTo( Objekt methodObj )
     {
-        if ( this.returnType != methodObj.getReturnType() )
+        /* HACK, ignores returnType for method get returns first found method
+         * --> Node should figure out its own type, then get the real object */
+        if ( methodObj.returnType != null )
         {
-            return false;
+            /* Needed for method put overload */
+            if ( this.returnType != methodObj.getReturnType() )
+            {
+                return false;
+            }
         }
 
-        /* Loop over both at the same time --> ToDo sorry that this looks so complicated */
-        // ToDo methods can be paras
+        /* Loop over both at the same time */
         Objekt currPara = this.parameterList;
         Objekt compPara = methodObj.parameterList;
 
         while ( true )
         {
+            /* Method paras always have to be Int */
             if ( currPara == null && compPara == null )
             {
                 return true;
@@ -138,17 +144,12 @@ public class Objekt
             {
                 return false;
             }
-            if ( !currPara.getName().equals( compPara.getName() ) )
-            {
-                return false;
-            }
-            /* This should only be important for methodObjekts as Parameters */
-            // Reuturn from method as parameter must be same as parameter type
-            // ToDo
-            if ( currPara.getReturnType() != compPara.getReturnType() )
-            {
-                return false;
-            }
+            /* Names s stupid right? */
+            // if ( !currPara.getName().equals( compPara.getName() ) )
+            // {
+            //  return false;
+            // }
+
             currPara = currPara.getNextObj();
             compPara = compPara.getNextObj();
         }
@@ -210,20 +211,20 @@ public class Objekt
         str.append( ": " + objClass );
 
         if ( type != null )
-            str.append( ", T " + type );
+            str.append( ", " + type );
 
         if ( intValue != null )
-            str.append( ", V " + intValue );
+            str.append( ", " + intValue );
 
         if ( returnType != null )
-            str.append( ", R " + returnType );
+            str.append( ", " + returnType );
 
         if ( parameterList != null )
         {
             Objekt currObjekt = parameterList;
             while ( currObjekt != null )
             {
-                str.append( ", P " + currObjekt );
+                str.append( ", " + currObjekt );
                 currObjekt = currObjekt.getNextObj();
             }
         }

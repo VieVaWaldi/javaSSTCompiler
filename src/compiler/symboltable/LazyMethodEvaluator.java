@@ -19,17 +19,9 @@ public class LazyMethodEvaluator
 
     public class MethodEvalStore
     {
-        public String methodName;
-
         public Objekt methodObj;
 
         public SymbolContext con;
-
-        public MethodEvalStore( String methodName, SymbolContext con )
-        {
-            this.methodName = methodName;
-            this.con = con;
-        }
 
         public MethodEvalStore( Objekt methodObj, SymbolContext con )
         {
@@ -39,7 +31,7 @@ public class LazyMethodEvaluator
     }
 
     /**
-     * --- outdate ---
+     * @outdated
      * Methods are added lazy because the parameters are assigned after the object is put,
      * making an on time evaluation pointless.
      * Currently only supports checking of the methods name was defined!
@@ -58,7 +50,7 @@ public class LazyMethodEvaluator
         /* then evaluate all method calls */
         for ( MethodEvalStore methodEval : methodEvalListGet )
         {
-            symTabClass.getObject( methodEval.methodName, methodEval.con );
+            symTabClass.getObject( methodEval.methodObj, methodEval.con );
         }
     }
 
@@ -67,9 +59,9 @@ public class LazyMethodEvaluator
         methodEvalListPut.add( new MethodEvalStore( methodObj, lastCon ) );
     }
 
-    public void lazyMethodObjektGet( String name, SymbolContext lastCon )
+    public void lazyMethodObjektGet( Objekt signature, SymbolContext lastCon )
     {
-        methodEvalListGet.add( new MethodEvalStore( name, lastCon ) );
+        methodEvalListGet.add( new MethodEvalStore( signature, lastCon ) );
     }
 }
 

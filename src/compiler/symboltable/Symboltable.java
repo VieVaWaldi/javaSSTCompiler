@@ -64,12 +64,12 @@ public class Symboltable
 
     /**
      * Retrieves an Object from the symbol table data structure, can look
-     * in the tables abbove but not below.
+     * in the tables above but not below.
      * Throws an exception if obj does not exist this upwards scope.
      */
     public Objekt getObject( String name, SymbolContext context )
     {
-        Objekt retObjekt = getObjektFromEnclosure( name );
+        Objekt retObjekt = getObjektFromEnclosure( new Objekt( name ) );
 
         if ( retObjekt != null )
         {
@@ -77,18 +77,29 @@ public class Symboltable
         }
         else
         {
-            variableError( context, format( "Variable %s has not been defined", name ) );
+            variableError( context, format( "Variable or method %s has not been defined", name ) );
             return null;
         }
     }
 
     /**
-     * Same as below but takes the name instead of.
+     * Same as below but takes the Objekt instead of, for method calls!
      */
-    private Objekt getObjektFromEnclosure( String name )
+    public Objekt getObject( Objekt obj, SymbolContext context )
     {
-        /* Fake Objekt wont be asked for in switch */
-        return getObjektFromEnclosure( new Objekt( name ) );
+        Objekt retObjekt = getObjektFromEnclosure( obj );
+
+        if ( retObjekt != null )
+        {
+            return retObjekt;
+        }
+        else
+        {
+            variableError( context,
+                            format( "Method %s has not been defined. Maybe you used the wrong number of parameters.",
+                                            obj.getName() ) );
+            return null;
+        }
     }
 
     /**
@@ -105,7 +116,6 @@ public class Symboltable
             /* 1.1 Obj fits name */
             if ( currObjekt.nameEquals( obj.getName() ) )
             {
-                /* ToDo I allow variables to have a methods name like this i think, no! but what else */
                 if ( currObjekt.objClazEquals( METHOD ) && obj.objClazEquals( METHOD ) )
                 {
                     if ( currObjekt.methodSignatureIsEqualTo( obj ) )
@@ -139,7 +149,7 @@ public class Symboltable
 
     public void debugSymTable()
     {
-        System.out.println("\n=== Symboltable ===");
+        System.out.println( "\n=== Symboltable ===" );
         debugSymTable( 0 );
     }
 

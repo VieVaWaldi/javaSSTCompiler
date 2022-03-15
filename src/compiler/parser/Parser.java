@@ -2,26 +2,14 @@ package compiler.parser;
 
 import static compiler.parser.SyntaxErrorMsgs.*;
 import static compiler.scanner.SymConst.*;
-import static compiler.symboltable.ObjektConst.CLASS_VAR;
-import static compiler.symboltable.ObjektConst.CLASZ;
-import static compiler.symboltable.ObjektConst.CONSTANT;
-import static compiler.symboltable.ObjektConst.METHOD;
-import static compiler.symboltable.ObjektConst.METHOD_VAR;
-import static compiler.symboltable.ObjektConst.PARA;
-import static compiler.symboltable.Type.Clasz;
-import static compiler.symboltable.Type.Int;
+import static compiler.symboltable.ObjektConst.*;
+import static compiler.symboltable.Type.*;
 
-import java.beans.Expression;
 import java.io.EOFException;
 import java.util.ArrayList;
 
 import compiler.abstractsyntaxtree.Node;
-import compiler.abstractsyntaxtree.nodes.AssignmentNode;
-import compiler.abstractsyntaxtree.nodes.ClassVarNode;
-import compiler.abstractsyntaxtree.nodes.ClaszNode;
-import compiler.abstractsyntaxtree.nodes.ConstantNode;
-import compiler.abstractsyntaxtree.nodes.MethodNode;
-import compiler.abstractsyntaxtree.nodes.ParameterNode;
+import compiler.abstractsyntaxtree.nodes.*;
 import compiler.helper.SymbolContext;
 import compiler.scanner.Scanner;
 import compiler.scanner.SymConst;
@@ -41,7 +29,7 @@ import compiler.symboltable.Symboltable;
  * Phase 2.2. Symboltabelle. See more in @(Symboltable).
  * </p>
  * <p>
- * Phase 2.3. Abstract syntax tree. See more in @(...AST...).
+ * Phase 2.3. Abstract syntax tree. See more in @(Node).
  * </p>
  */
 public class Parser
@@ -50,11 +38,11 @@ public class Parser
 
     private SymbolContext con;
 
-    private ArrayList<SymbolContext> lastConList = new ArrayList<>();
+    private final ArrayList<SymbolContext> lastConList = new ArrayList<>();
 
     private int LAST_CON_IDX = -1;
 
-    private Symboltable symbolTableHead;
+    private final Symboltable symbolTableHead;
 
     private Symboltable symbolTableCurrent;
 
@@ -118,8 +106,6 @@ public class Parser
 
     /**
      * Expects one look before.
-     *
-     * @throws EOFException
      */
     private Node Classbody()
                     throws EOFException
@@ -172,13 +158,13 @@ public class Parser
             nextSym();
 
             /* NODE LINK, when there was an expression link assignment */
-            if ( assignmentNode.getRight() != null )
+            if ( assignmentNode.getRight() instanceof NumberNode )
             {
-                declarationNode = linkNewNode( declarationNode, assignmentNode );
+                declarationNode = linkNewNode( declarationNode, constNode );
             }
             else
             {
-                declarationNode = linkNewNode( declarationNode, constNode );
+                declarationNode = linkNewNode( declarationNode, assignmentNode );
             }
         }
 
@@ -196,14 +182,14 @@ public class Parser
             nextSymThrowErrIfNotEqual( SEMICO, ERR_EXPECTED_SEMICO );
             nextSym();
 
-            /* NODE LINK */
-            declarationNode = linkNewNode( declarationNode, classVarNode );
+            /* NODE LINK --> Doesnt have to be in AST, but in ST */
+            // declarationNode = linkNewNode( declarationNode, classVarNode );
         }
 
         while ( symEquals( PUBLIC ) )
         {
             /* NODE METHOD CREATE */
-            MethodNode methodeNode = MethodDeclaration();
+            Node methodeNode = MethodDeclaration();
             nextSym();
 
             /* NODE LINK */
@@ -213,11 +199,11 @@ public class Parser
         return declarationNode;
     }
 
-    private MethodNode MethodDeclaration()
+    private Node MethodDeclaration()
                     throws EOFException
     {
         /* NODE METHOD HEAD AND BODY left */
-        MethodNode methodNode = MethodHead();
+        Node methodNode = MethodHead();
         /* ToDo Node append left from first para or link to last para. I choose left for now */
         methodNode.appendLeft( MethodBody() );
 
@@ -230,7 +216,7 @@ public class Parser
     /**
      * Assumes PUBLIC has already been checked!
      */
-    private MethodNode MethodHead()
+    private Node MethodHead()
                     throws EOFException
     {
         MethodType();
@@ -295,7 +281,6 @@ public class Parser
             Objekt paraObj = new Objekt( con.getValue(), PARA, Int, null );
             symbolTableCurrent.putObjekt( paraObj, con );
             lastMethodObj.appendParaDef( new Objekt( con.getValue(), PARA, Int, null ) );
-            // ToDo see why this cant be paraObj, and if that has consequences (below as well), shouldnt be because this just makes the method obj signature
 
             /* NODE PARAMETER */
             paraNode = new ParameterNode( con.getValue(), paraObj );
@@ -328,8 +313,8 @@ public class Parser
         LocalDeclaration();
 
         /* NODE STATEMENT IN METHOD */
-        /* ToDo Node append left from first para or link to last para. I choose left for now */
         Node statementNode = StatementSequence();
+
         throwErrIfSymNotEqual( RBRACK, ERR_EXPECTED_RB );
 
         return statementNode;
@@ -390,8 +375,6 @@ public class Parser
     private Node Statement()
                     throws EOFException
     {
-        Node statementNode = null;
-
         if ( symEquals( IDENT ) )
         {
             /* Can be assignment OR procedure_call -> get next char, store last? */
@@ -400,59 +383,82 @@ public class Parser
             {
                 /* SYMTAB GET --> assignment of existing var */
                 debugParser( " > IDENT VAR ASSIGN: " + getLastCon().getValue() );
-                symbolTableCurrent.getObject( getLastCon().getValue(), getLastCon() );
+                Objekt methodVarObj = symbolTableCurrent.getObject( getLastCon().getValue(), getLastCon() );
 
-                //                statementNode = new Node();
+                /* NODE VAR ASSIGN */
+                MethodVarNode methodVarNode = new MethodVarNode( getLastCon().getValue(), methodVarObj );
+                AssignmentNode assignmentNode = new AssignmentNode( methodVarNode, Assignment() );
 
-                Assignment();
+                nextSym();
+                assignmentNode.appendLink( Statement() );
+                return assignmentNode;
             }
             else if ( symEquals( LPAREN ) ) /* Must be procedure_call,  assumes ident and lparen were already called! */
             {
                 /* SYMTAB GET and LAZY METHOD EVAL --> method (procedure) call */
-                debugParser( " > IDENT FUNC CALL NO ASSIGN: " + getLastCon().getValue() );
-                lazyMethodEvaluator.lazyMethodObjektGet( getLastCon().getValue(), getLastCon() );
+                debugParser( " > IDENT SIMPLE CALL: " + getLastCon().getValue() );
+
+                /* WIP method get is fuzzy. We save the method signature without return type.
+                 * In the Parser its only checked if this method name with that para count exists.
+                 * Semantic analysis has to figure out the type, via the attached symTab. */
+                Objekt methodSignature = new Objekt( getLastCon().getValue(), METHOD, null, symbolTableCurrent, null );
+                SymbolContext methodCallCon = getLastCon();
+
+                MethodCallNode methodCallNode = new MethodCallNode( getLastCon().getValue(), methodSignature );
 
                 ProcedureCall();
+                // ParaExpressionNode paraExpressionNode = new ParaExpressionNode( ProcedureCall() ); // ToDo para hier müssen aufgenommen werden weil kann ne expression sein
+
+                // ToDo Parameter über die Nodes vom ast herausfinden
+
+                /* lastCon is rParen */
+                appendParametersToMethodSignature( methodSignature );
+                lazyMethodEvaluator.lazyMethodObjektGet( methodSignature, methodCallCon );
+
+                nextSym();
+                methodCallNode.appendLink( Statement() );
+                return methodCallNode;
             }
             else
             {
                 syntaxError( ERR_EXPECTED_EQUAL_OR_LB );
             }
-            nextSym();
-            Statement();
         }
         else if ( symEquals( IF ) )
         {
-            If();
+            IfElseNode ifElseNode = If();
             nextSym();
-            Statement();
+            ifElseNode.appendLink( Statement() );
+            return ifElseNode;
         }
         else if ( symEquals( WHILE ) )
         {
-            While();
+            WhileNode whileNode = While();
             nextSym();
-            Statement();
+            whileNode.appendLink( Statement() );
+            return whileNode;
         }
         else if ( symEquals( RETURN ) )
         {
-            Return();
+            ReturnNode returnNode = Return();
             nextSym();
-            Statement();
+            returnNode.appendLink( Statement() );
+            return returnNode;
         }
-        /*If we arrive here the recursive statement sequence is over*/
 
-        return statementNode;
+        return null; /*If we arrive here the recursive statement sequence is over*/
     }
 
     /**
      * Assumes IDENT has already been checked! AND
      * Assumes EQUAL has already been checked!
      */
-    private void Assignment()
+    private Node Assignment()
                     throws EOFException
     {
-        Expression();
+        Node expression = Expression();
         throwErrIfSymNotEqual( SEMICO, ERR_EXPECTED_SEMICO );
+        return expression;
     }
 
     /**
@@ -489,18 +495,21 @@ public class Parser
     /**
      * Assumes IF has already been checked!
      */
-    private void If()
+    private IfElseNode If()
                     throws EOFException
     {
         nextSymThrowErrIfNotEqual( LPAREN, ERR_EXPECTED_LP );
-        Expression();
+        IfNode ifNode = new IfNode( Expression() );
+
         throwErrIfSymNotEqual( RPAREN, ERR_EXPECTED_RP );
         nextSymThrowErrIfNotEqual( LBRACK, ERR_EXPECTED_LB );
 
         /* SYMTAB BLOCK --> Cant declare vars in here */
 
         nextSym();
-        StatementSequence();
+        ifNode.appendRight( StatementSequence() );
+        IfElseNode ifElseNode = new IfElseNode( ifNode );
+
         throwErrIfSymNotEqual( RBRACK, ERR_EXPECTED_RB );
         nextSymThrowErrIfNotEqual( ELSE, ERR_EXPECTED_LB );
         nextSymThrowErrIfNotEqual( LBRACK, ERR_EXPECTED_LB );
@@ -508,36 +517,42 @@ public class Parser
         /* SYMTAB BLOCK --> Cant declare vars in here */
 
         nextSym();
-        StatementSequence();
+        ifElseNode.appendRight( StatementSequence() );
         throwErrIfSymNotEqual( RBRACK, ERR_EXPECTED_RB );
+
+        return ifElseNode;
     }
 
     /**
      * Assumes WHILE has already been checked!
      */
-    private void While()
+    private WhileNode While()
                     throws EOFException
     {
         nextSymThrowErrIfNotEqual( LPAREN, ERR_EXPECTED_LP );
-        Expression();
+        WhileNode whileNode = new WhileNode( Expression() );
+
         throwErrIfSymNotEqual( RPAREN, ERR_EXPECTED_RP );
         nextSymThrowErrIfNotEqual( LBRACK, ERR_EXPECTED_LB );
 
         /* SYMTAB BLOCK --> Cant declare vars in here */
 
         nextSym();
-        StatementSequence();
+        whileNode.appendLink( StatementSequence() );
         throwErrIfSymNotEqual( RBRACK, ERR_EXPECTED_RB );
+
+        return whileNode;
     }
 
     /**
      * Assumes RETURN has already been checked!
      */
-    private void Return()
+    private ReturnNode Return()
                     throws EOFException
     {
-        SimpleExpression( true );
+        ReturnNode returnNode = new ReturnNode( SimpleExpression( true ) );
         throwErrIfSymNotEqual( SEMICO, ERR_EXPECTED_SEMICO );
+        return returnNode;
     }
 
     /**
@@ -546,46 +561,54 @@ public class Parser
     private Node Expression()
                     throws EOFException
     {
-        SimpleExpression( false );
+        Node expressionNode = SimpleExpression( false );
+        CompareNode compNode = null;
 
         while ( symEquals( EQUALS ) || symEquals( LTHAN ) || symEquals( LTHANOR ) || symEquals( GTHAN ) || symEquals(
                         GTHANOR ) )
         {
-            SimpleExpression( false );
+            /* NODE SIMPLE STATEMENT  */
+            compNode = new CompareNode( con.getSym(), expressionNode, SimpleExpression( false ) );
         }
 
-        return null;
+        return returnNewNodeIfNotNull( expressionNode, compNode );
     }
 
     /**
      * Performs one look ahead.
      */
-    private void SimpleExpression( boolean optional )
+    private Node SimpleExpression( boolean optional )
                     throws EOFException
     {
-        Term( optional );
+        Node simpleExpressionNode = Term( optional );
+        TermNode termNode = null;
 
         while ( symEquals( PLUS ) || symEquals( MINUS ) )
         {
-            Term( false );
+            termNode = new TermNode( con.getSym(), simpleExpressionNode, Term( false ) );
         }
+
+        return returnNewNodeIfNotNull( simpleExpressionNode, termNode );
     }
 
     /**
      * Performs one look ahead.
      */
-    private void Term( boolean optional )
+    private Node Term( boolean optional )
                     throws EOFException
     {
-        Factor( optional );
+        Node termNode = Factor( optional );
+        FactorNode factorNode = null;
 
         while ( symEquals( TIMES ) || symEquals( QUOT ) )
         {
-            Factor( false );
+            factorNode = new FactorNode( con.getSym(), termNode, Factor( false ) );
         }
+
+        return returnNewNodeIfNotNull( termNode, factorNode );
     }
 
-    private void Factor( boolean optional )
+    private Node Factor( boolean optional )
                     throws EOFException
     {
         nextSym();
@@ -595,45 +618,51 @@ public class Parser
             if ( symEquals( LPAREN ) ) /* assumes ident and lparen were already called! */
             {
                 /* SYMTAB GET and LAZY METHOD EVAL --> method (procedure) call i think */
-                debugParser( " > IDENT FUNC CALL ASSIGN: " + getLastCon().getValue() );
-                // Objekt methodCallObj = new Objekt( getLastCon().getValue(), METHOD, null, null, null );
-                // SymbolContext methodCallCon = getLastCon(); // save context
-                lazyMethodEvaluator.lazyMethodObjektGet( getLastCon().getValue(), getLastCon() );
+                debugParser( " > IDENT FUNC CALL: ASSIGN, RETURN, METHOD AS PARA: " + getLastCon().getValue() );
+
+                /* WIP method get is fuzzy. We save the method signature without return type.
+                 * In the Parser its only checked if this method name with that para count exists.
+                 * Semantic analysis has to figure out the type, via the attached symTab. */
+                /* THIS METHOD MUST RETURN INT BECAUSE OF ASSIGN OR RETURN !*/
+                Objekt methodSignature = new Objekt( getLastCon().getValue(), METHOD, null, symbolTableCurrent, null );
+                SymbolContext methodCallCon = getLastCon();
+
+                MethodCallNode methodCallNode = new MethodCallNode( getLastCon().getValue(), methodSignature );
 
                 InternProcedureCall();
-
-                /* ToDo SYMTAB LAZY METHOD EVAL append parameters */
-                // appendParametersToMethodCallObj( methodCallObj );
-                // lazyMethodEvaluator.lazyMethodObjektGet( methodCallObj, methodCallCon );
-
-                // Eine Methode hier muss wenn ich sie lazy gette
-                // die richtige anzahl an parametern, aus der ich mit get herausfinde
-                // Naja, sobald du die anz paras hast bekommst du später mit get immer die
-                // richtige methode. Und im späterem type check sollte das ausreichen
-                /* Ich will also getMETH nur mit 1. methName und 2. anz paras versorgen */
-                /* Gecallte methoden müssen immer return int sein, wir können kein void returnen */
-
+                // ParaExpressionNode paraExpressionNode = new ParaExpressionNode( InternProcedureCall() ); // ToDo
                 nextSym();
+
+                /* lastCon is rParen */
+                appendParametersToMethodSignature( methodSignature );
+                lazyMethodEvaluator.lazyMethodObjektGet( methodSignature, methodCallCon );
+
+                return methodCallNode;
             }
             else
             {
                 /* SYMTAB GET --> simple variable read */
                 debugParser( " > IDENT VAR USE: " + getLastCon().getValue() );
-                symbolTableCurrent.getObject( getLastCon().getValue(), getLastCon() );
+                Objekt methodVarObj = symbolTableCurrent.getObject( getLastCon().getValue(), getLastCon() );
+
+                return new MethodVarNode( getLastCon().getValue(), methodVarObj );
             }
         }
         else if ( symEquals( NUMBER ) )
         {
             // Nothing to do here?
+            NumberNode numberNode = new NumberNode( con.getValue() );
             nextSym();
+            return numberNode;
         }
         else if ( symEquals( LPAREN ) )
         {
-            Expression();
+            Node expressionNode = Expression();
             throwErrIfSymNotEqual( RPAREN, ERR_EXPECTED_RP );
             nextSym();
+            return expressionNode;
         }
-        /* ToDo I entered this else if after the BUG where method calls with 0 paras were faulty. Keep that in mind */
+        /* with nextSym BUGGY, for methodCalls without parameters as a return */
         else if ( symEquals( RPAREN ) )
         {
             // nextSym();
@@ -642,7 +671,11 @@ public class Parser
         {
             syntaxError( ERR_FACTOR_NOT_VALID );
         }
+
+        return null;
     }
+
+    // === PARSER =========================================================================== //
 
     /**
      * Only legal way to call scanner.getSym()
@@ -681,80 +714,96 @@ public class Parser
         throwErrIfSymNotEqual( symConst, em );
     }
 
+    private void syntaxError( SyntaxErrorMsgs em )
+    {
+        System.out.printf( "$ SyntaxError at Line %s:%s with problematic symbol %s: \"%s\".\n$ %s%n", con.getLine(),
+                        con.getColumn(), con.getSym(), con.getValue(), em );
+        System.exit( 1 );
+    }
+
     /**
      * Counts the number of parameters for method calls.
-     * Methods can be parameters
-     * Paras must be retrieved inversely
+     * Methods are counted parameters.
+     * <p>
+     * DOES ONLY WORK for methods and idents as paras.
+     * </p>
      */
-    private void appendParametersToMethodCallObj( Objekt methodCallObj )
+    /* ToDo add method a para as type PARA_METHOD */
+    /* ToDo add expression as para */
+    /* ToDo add expression as para as type PARA_EXPRESSION */
+    private void appendParametersToMethodSignature( Objekt methodSignature )
     {
-        int i = lastConList.size() - 1;
+        int i = lastConList.size() - 2; // start right from last rParen
         ArrayList<Objekt> methodCallParaList = new ArrayList<>();
+
+        SymbolContext rmme = lastConList.get( i );
+
+        int rParen = 0;
+        int lParen = 0;
 
         while ( 0 < i )
         {
-            SymbolContext rmme = lastConList.get( i );
-
-            // simple parameter
-            if ( lastConList.get( i ).getSym() == LPAREN )
+            /* Must have reached  */
+            if ( lastConList.get( i ).getSym().equals( LPAREN ) )
             {
                 i--;
-                if ( lastConList.get( i ).getSym() == IDENT )
+                if ( lastConList.get( i ).getSym().equals( IDENT ) )
                 {
-                    // is a method in a method and therefore a para of the next outer method
-                    if ( lastConList.get( i - 1 ).getSym() == COMMA || lastConList.get( i - 1 ).getSym() == LPAREN )
-                    {
-                        // ToDo how do i get the type of this inner method
-                        // If have the right para count and can do it lazy
-                        methodCallParaList.add( new Objekt( lastConList.get( i ).getValue(), PARA, null, null ) );
-                        continue;
-                    }
-                    // is most outer method
-                    else
+                    break;
+                }
+            }
+
+            /* Method as a parameter */
+            if ( lastConList.get( i ).getSym().equals( RPAREN ) )
+            {
+                i--;
+                rParen++;
+                while ( true )
+                {
+                    if ( lParen == rParen )
                     {
                         break;
                     }
+                    if ( lastConList.get( i ).getSym().equals( RPAREN ) )
+                    {
+                        rParen++;
+                    }
+                    if ( lastConList.get( i ).getSym().equals( LPAREN ) )
+                    {
+                        lParen++;
+                    }
+                    i--;
                 }
-                else
-                {
-                    System.out.println( "ERROR - Sorry" );
-                }
+                /* ToDo should this be a method para? */
+                methodCallParaList.add( new Objekt( lastConList.get( i ).getValue(), PARA, Int, null ) );
+                i--; // eat ident
+                continue;
             }
 
-            // simple para
-            if ( lastConList.get( i ).getSym() == IDENT )
+            /* Simple Para */
+            if ( lastConList.get( i ).getSym().equals( IDENT ) )
             {
                 methodCallParaList.add( new Objekt( lastConList.get( i ).getValue(), PARA, Int, null ) );
             }
+
+            /* Simple Para Number */
+            if ( lastConList.get( i ).getSym().equals( NUMBER ) )
+            {
+                methodCallParaList.add( new Objekt( lastConList.get( i ).getValue(), PARA, Int, null ) );
+            }
+
+            /* Skip commas */
+
             i--;
         }
 
         // loop reverse through list
-        for ( int j = methodCallParaList.size() - 1; j > 0; j-- )
+        i = methodCallParaList.size() - 1;
+        while ( i > -1 )
         {
-            methodCallObj.appendParaDef( methodCallParaList.get( j ) );
+            methodSignature.appendParaDef( methodCallParaList.get( i ) );
+            i--;
         }
-    }
-
-    private Node linkNewNode( Node topNode, Node insertNode )
-    {
-        /* Set empty or link new Node */
-        if ( topNode == null )
-        {
-            topNode = insertNode;
-        }
-        else
-        {
-            topNode.appendLink( insertNode );
-        }
-        return topNode;
-    }
-
-    private void syntaxError( SyntaxErrorMsgs em )
-    {
-        System.out.println( String.format( "$ SyntaxError at Line %s:%s with problematic symbol %s: \"%s\".\n$ %s",
-                        con.getLine(), con.getColumn(), con.getSym(), con.getValue(), em ) );
-        System.exit( 1 );
     }
 
     private SymbolContext getLastCon()
@@ -772,6 +821,34 @@ public class Parser
         if ( isDebugEnabledParser )
         {
             System.out.println( msg );
+        }
+    }
+
+    // === AST ============================================================================== //
+
+    private Node linkNewNode( Node topNode, Node insertNode )
+    {
+        /* Set empty or link new Node */
+        if ( topNode == null )
+        {
+            topNode = insertNode;
+        }
+        else
+        {
+            topNode.appendLink( insertNode );
+        }
+        return topNode;
+    }
+
+    private Node returnNewNodeIfNotNull( Node firstNode, Node newNode )
+    {
+        if ( newNode != null )
+        {
+            return newNode;
+        }
+        else
+        {
+            return firstNode;
         }
     }
 

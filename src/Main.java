@@ -8,7 +8,7 @@ import compiler.scanner.Scanner;
 
 public class Main
 {
-    final static String source_1 = "src/compiler_tests/test_files/complicated_file.jst";
+    final static String source_1 = "src/compiler_tests/test_files/simple_file.jst";
 
     final static String source_2 = "src/compiler_tests/test_files/real_file.jst";
 
@@ -20,11 +20,11 @@ public class Main
 
     private static void testRun_Parser()
     {
-        Parser parser = new Parser( new Scanner( new Input( source_2 ) ) );
+        Parser parser = new Parser( new Scanner( new Input( source_1 ) ) );
 
         Node root = parser.Class();
 
-        DotASTCreator dotASTCreator = new DotASTCreator( "./ast.dot" );
+        DotASTCreator dotASTCreator = new DotASTCreator( "./ast.dot", false );
         dotASTCreator.createDotTree( root );
     }
 

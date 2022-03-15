@@ -5,33 +5,18 @@ package compiler.scanner;
  */
 public enum SymConst
 {
-    IDENT,
-    NUMBER,
-    CLASS,
-    PUBLIC,
-    FINAL,
-    VOID,
-    INT,
-    RETURN,
-    IF,
-    ELSE,
-    WHILE,
-    LPAREN,
-    RPAREN,
-    LBRACK,
-    RBRACK,
-    EQUAL,
-    SEMICO,
-    COMMA,
-    PLUS,
-    MINUS,
-    TIMES,
-    QUOT,
-    EQUALS,
-    LTHAN,
-    GTHAN,
-    LTHANOR,
-    GTHANOR,
+    IDENT, NUMBER, CLASS, PUBLIC, FINAL, VOID, INT,
+
+    RETURN, IF, ELSE, WHILE,
+
+    LPAREN, RPAREN, LBRACK, RBRACK, EQUAL,
+
+    SEMICO, COMMA,
+
+    PLUS, MINUS, TIMES, QUOT,
+
+    EQUALS, LTHAN, GTHAN, LTHANOR, GTHANOR,
+
     OTHER
 }
 
