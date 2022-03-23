@@ -34,8 +34,11 @@ class Test {
 			}
 		}
 
-        /* ToDo WIP Hier fehlen noch die Paras */
-		m3 = meth2(m1,m2);
+        meth2(10, m1);
+
+        meth2(1+2+3, m3/10+5);
+
+		m3 = meth2(m1,meth1());
 
 		m2 = meth2(meth2(m1,m3), m2);
 

@@ -16,7 +16,7 @@ public class MethodCallNode
         this.nodeClasz = NodeClasz.METHOD;
 
         this.name = name;
-        this.dotName = name + "_" + DOT_COUNTER++;
+        this.dotName = name + "_C_" + DOT_COUNTER++;
 
         this.obj = signature;
     }

@@ -398,21 +398,21 @@ public class Parser
                 /* SYMTAB GET and LAZY METHOD EVAL --> method (procedure) call */
                 debugParser( " > IDENT SIMPLE CALL: " + getLastCon().getValue() );
 
-                /* WIP method get is fuzzy. We save the method signature without return type.
-                 * In the Parser its only checked if this method name with that para count exists.
-                 * Semantic analysis has to figure out the type, via the attached symTab. */
+                /* Get return type in type analysis by retrieving unique method (see para count) from ST */
+                /* Here! We must
+                 * 1. Build method signature with right para count
+                 * 2. If para is an expression add it to AST */
                 Objekt methodSignature = new Objekt( getLastCon().getValue(), METHOD, null, symbolTableCurrent, null );
                 SymbolContext methodCallCon = getLastCon();
 
                 MethodCallNode methodCallNode = new MethodCallNode( getLastCon().getValue(), methodSignature );
 
-                ProcedureCall();
-                // ParaExpressionNode paraExpressionNode = new ParaExpressionNode( ProcedureCall() ); // ToDo para hier müssen aufgenommen werden weil kann ne expression sein
+                /* PROCEDURE CALL NODE is just a link of expressions, count of para is num of expressions */
+                Node procedureCallNode = ProcedureCall();
+                Node cleanedProcedureCallNode = addFakeParametersToMethodSignatureAndReturnParaNodes( methodSignature,
+                                procedureCallNode );
+                methodCallNode.appendLeft( procedureCallNode ); // ToDo take cleaned
 
-                // ToDo Parameter über die Nodes vom ast herausfinden
-
-                /* lastCon is rParen */
-                appendParametersToMethodSignature( methodSignature );
                 lazyMethodEvaluator.lazyMethodObjektGet( methodSignature, methodCallCon );
 
                 nextSym();
@@ -466,30 +466,32 @@ public class Parser
      * Assumes LPAREN has already been checked!
      * Because so far only shows up when ident only was the other option.
      */
-    private void ProcedureCall()
+    private Node ProcedureCall()
                     throws EOFException
     {
-        InternProcedureCall();
+        Node procedureCallNode = InternProcedureCall();
         nextSymThrowErrIfNotEqual( SEMICO, ERR_EXPECTED_SEMICO );
+        return procedureCallNode;
     }
 
-    private void InternProcedureCall()
+    private Node InternProcedureCall()
                     throws EOFException
     {
-        ActualParameters();
+        return ActualParameters();
     }
 
-    private void ActualParameters()
+    private Node ActualParameters()
                     throws EOFException
     {
-        Expression();
+        Node expressionNode = Expression();
 
         while ( symEquals( COMMA ) )
         {
-            Expression();
+            expressionNode.appendLink( Expression() );
         }
 
         throwErrIfSymNotEqual( RPAREN, ERR_EXPECTED_RP );
+        return expressionNode;
     }
 
     /**
@@ -585,7 +587,8 @@ public class Parser
 
         while ( symEquals( PLUS ) || symEquals( MINUS ) )
         {
-            termNode = new TermNode( con.getSym(), simpleExpressionNode, Term( false ) );
+            termNode = new TermNode( con.getSym(), returnNewNodeIfNotNull( simpleExpressionNode, termNode ),
+                            Term( false ) );
         }
 
         return returnNewNodeIfNotNull( simpleExpressionNode, termNode );
@@ -620,21 +623,24 @@ public class Parser
                 /* SYMTAB GET and LAZY METHOD EVAL --> method (procedure) call i think */
                 debugParser( " > IDENT FUNC CALL: ASSIGN, RETURN, METHOD AS PARA: " + getLastCon().getValue() );
 
-                /* WIP method get is fuzzy. We save the method signature without return type.
-                 * In the Parser its only checked if this method name with that para count exists.
-                 * Semantic analysis has to figure out the type, via the attached symTab. */
-                /* THIS METHOD MUST RETURN INT BECAUSE OF ASSIGN OR RETURN !*/
+                /* Get return type in type analysis by retrieving unique method (see para count) from ST*/
+                /* Here! We must
+                 * 1. Build method signature with right para count
+                 * 2. If para is an expression add it to AST */
                 Objekt methodSignature = new Objekt( getLastCon().getValue(), METHOD, null, symbolTableCurrent, null );
                 SymbolContext methodCallCon = getLastCon();
 
                 MethodCallNode methodCallNode = new MethodCallNode( getLastCon().getValue(), methodSignature );
 
-                InternProcedureCall();
-                // ParaExpressionNode paraExpressionNode = new ParaExpressionNode( InternProcedureCall() ); // ToDo
+                /* PROCEDURE CALL NODE is just a link of expressions, count of para is num of expressions */
+                Node procedureCallNode = InternProcedureCall();
+                Node cleanedParaNode = addFakeParametersToMethodSignatureAndReturnParaNodes( methodSignature,
+                                procedureCallNode );
+                // ToDo: append paras (like methodCall or expression) of method call in ast, left to methodCallNode
+                methodCallNode.appendLeft( procedureCallNode ); // ???
+
                 nextSym();
 
-                /* lastCon is rParen */
-                appendParametersToMethodSignature( methodSignature );
                 lazyMethodEvaluator.lazyMethodObjektGet( methodSignature, methodCallCon );
 
                 return methodCallNode;
@@ -721,6 +727,37 @@ public class Parser
         System.exit( 1 );
     }
 
+    // ToDo purge loose numbers and vars from this part of the ast
+    private Node addFakeParametersToMethodSignatureAndReturnParaNodes( Objekt methodSignature, Node procedureCallNode )
+    {
+        Node retNode = null;
+        Node currentNode = procedureCallNode; // Should be an expression
+
+        while ( currentNode != null )
+        {
+            /* ToDo */
+            /* Variable has already been checked down the ProcedureCall() Stack */
+            /* I only need Int and PARA for methodSignature */
+            /* If its a void method OR a bool expression, must be checked in type analysis i think */
+            methodSignature.appendParaDef( new Objekt( null, PARA, Int, null ) );
+
+            //            if ( !( currentNode instanceof MethodVarNode ) )
+            //            {
+            //                if ( retNode == null )
+            //                {
+            //                    retNode = currentNode;
+            //                }
+            //                else
+            //                {
+            //                    retNode.appendLink( currentNode );
+            //                }
+            //            }
+
+            currentNode = currentNode.getLink();
+        }
+        return retNode;
+    }
+
     /**
      * Counts the number of parameters for method calls.
      * Methods are counted parameters.
@@ -731,81 +768,80 @@ public class Parser
     /* ToDo add method a para as type PARA_METHOD */
     /* ToDo add expression as para */
     /* ToDo add expression as para as type PARA_EXPRESSION */
-    private void appendParametersToMethodSignature( Objekt methodSignature )
-    {
-        int i = lastConList.size() - 2; // start right from last rParen
-        ArrayList<Objekt> methodCallParaList = new ArrayList<>();
-
-        SymbolContext rmme = lastConList.get( i );
-
-        int rParen = 0;
-        int lParen = 0;
-
-        while ( 0 < i )
-        {
-            /* Must have reached  */
-            if ( lastConList.get( i ).getSym().equals( LPAREN ) )
-            {
-                i--;
-                if ( lastConList.get( i ).getSym().equals( IDENT ) )
-                {
-                    break;
-                }
-            }
-
-            /* Method as a parameter */
-            if ( lastConList.get( i ).getSym().equals( RPAREN ) )
-            {
-                i--;
-                rParen++;
-                while ( true )
-                {
-                    if ( lParen == rParen )
-                    {
-                        break;
-                    }
-                    if ( lastConList.get( i ).getSym().equals( RPAREN ) )
-                    {
-                        rParen++;
-                    }
-                    if ( lastConList.get( i ).getSym().equals( LPAREN ) )
-                    {
-                        lParen++;
-                    }
-                    i--;
-                }
-                /* ToDo should this be a method para? */
-                methodCallParaList.add( new Objekt( lastConList.get( i ).getValue(), PARA, Int, null ) );
-                i--; // eat ident
-                continue;
-            }
-
-            /* Simple Para */
-            if ( lastConList.get( i ).getSym().equals( IDENT ) )
-            {
-                methodCallParaList.add( new Objekt( lastConList.get( i ).getValue(), PARA, Int, null ) );
-            }
-
-            /* Simple Para Number */
-            if ( lastConList.get( i ).getSym().equals( NUMBER ) )
-            {
-                methodCallParaList.add( new Objekt( lastConList.get( i ).getValue(), PARA, Int, null ) );
-            }
-
-            /* Skip commas */
-
-            i--;
-        }
-
-        // loop reverse through list
-        i = methodCallParaList.size() - 1;
-        while ( i > -1 )
-        {
-            methodSignature.appendParaDef( methodCallParaList.get( i ) );
-            i--;
-        }
-    }
-
+    //    private void appendParametersToMethodSignature( Objekt methodSignature )
+    //    {
+    //        int i = lastConList.size() - 2; // start right from last rParen
+    //        ArrayList<Objekt> methodCallParaList = new ArrayList<>();
+    //
+    //        SymbolContext rmme = lastConList.get( i );
+    //
+    //        int rParen = 0;
+    //        int lParen = 0;
+    //
+    //        while ( 0 < i )
+    //        {
+    //            /* Must have reached  */
+    //            if ( lastConList.get( i ).getSym().equals( LPAREN ) )
+    //            {
+    //                i--;
+    //                if ( lastConList.get( i ).getSym().equals( IDENT ) )
+    //                {
+    //                    break;
+    //                }
+    //            }
+    //
+    //            /* Method as a parameter */
+    //            if ( lastConList.get( i ).getSym().equals( RPAREN ) )
+    //            {
+    //                i--;
+    //                rParen++;
+    //                while ( true )
+    //                {
+    //                    if ( lParen == rParen )
+    //                    {
+    //                        break;
+    //                    }
+    //                    if ( lastConList.get( i ).getSym().equals( RPAREN ) )
+    //                    {
+    //                        rParen++;
+    //                    }
+    //                    if ( lastConList.get( i ).getSym().equals( LPAREN ) )
+    //                    {
+    //                        lParen++;
+    //                    }
+    //                    i--;
+    //                }
+    //                /* ToDo should this be a method para? */
+    //                methodCallParaList.add( new Objekt( lastConList.get( i ).getValue(), PARA, Int, null ) );
+    //                i--; // eat ident
+    //                continue;
+    //            }
+    //
+    //            /* Simple Para */
+    //            if ( lastConList.get( i ).getSym().equals( IDENT ) )
+    //            {
+    //                methodCallParaList.add( new Objekt( lastConList.get( i ).getValue(), PARA, Int, null ) );
+    //            }
+    //
+    //            /* Simple Para Number */
+    //            if ( lastConList.get( i ).getSym().equals( NUMBER ) )
+    //            {
+    //                methodCallParaList.add( new Objekt( lastConList.get( i ).getValue(), PARA, Int, null ) );
+    //            }
+    //
+    //            /* Skip commas */
+    //
+    //            i--;
+    //        }
+    //
+    //        // loop reverse through list
+    //        i = methodCallParaList.size() - 1;
+    //        while ( i > -1 )
+    //        {
+    //            methodSignature.appendParaDef( methodCallParaList.get( i ) );
+    //            i--;
+    //        }
+    //    }
     private SymbolContext getLastCon()
     {
         return getLastCon( 0 );

@@ -6,7 +6,7 @@ class GenesisClass {
 	final int var4 = 3;
 	final int var5 = 100 ;
 
-	/* QUESTION --> geht nicht oder? */
+	/* QUESTION --> Not part of the language */
 	// ERR final int negativ = -100;
 
 	/* ERR SAME VARIABLE NAME */
@@ -24,16 +24,14 @@ class GenesisClass {
     // ERR   a=4;
     // ERR }
 
-    /* FT Overload */
-    // ToDo ReturnType Void missing in AST
-    public void meth1(int m) { //!!!! OERLOAD NUR MIT UNTERSCHIEDLICHEN PARAMETERN
+    /* FT Overload, only dependent on var count AND return type */
+    public void meth1(int m) {
        return m;
     }
 
     /* FT Overload */
-    // ToDo Add Method Para to AST?
     public int meth1(int m) {
-        /* BUG FIX NO PARA METHOD CALL */
+        /* ToDo This has to return itself, not meth1 above, because of return type */
        return meth1();
     }
 	
@@ -44,7 +42,6 @@ class GenesisClass {
 		int langerVariablenName;
 
         langerVariablenName = 41321234;
-        // ToDo +13 missing
 		m1 = 10 + 13 - 22 / 45;
 		m2 = 20 + m2;
 		m3 = 0 + 5*m2;
@@ -71,11 +68,9 @@ class GenesisClass {
 			}
 		}
 
-        /* BUG, ToDo evaluate Paras using AST */
-        // meth2(m1, m3+1/7);
-		// meth2(m1, m3+1/7, m3);
-
 		/* FT METHOD CALL WITH METHOD AS PARA */
+		// ToDo Expression of method
+		meth2(m1, m3+1/7);
 		m2 = meth2(m2, meth2(m1,m3));
 		m2 = meth2(meth2(m1,m3), m2);
 		m2 = meth2(meth2(meth2(m1,m2),m3), meth2(meth2(m1,m2),m2));
@@ -83,6 +78,7 @@ class GenesisClass {
         /* ERR METHOD DOESNT EXIST */
         // ERR m3 = meth3();
         // ERR meth3();
+        // ERR meth2(m1, m3+1/7, m3);
 
 		/* ERR WRONG PARA COUNT */
 		// ERR m3 = meth2(m1,meth1(), meth1(m1));
