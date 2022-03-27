@@ -1,18 +1,46 @@
 package compiler.abstractsyntaxtree.nodes;
 
-import compiler.abstractsyntaxtree.Node;
-import compiler.abstractsyntaxtree.NodeClasz;
+import static java.lang.String.format;
 
-public class ReturnNode extends Node
+import compiler.abstractsyntaxtree.INode;
+import compiler.abstractsyntaxtree.NodeClasz;
+import compiler.helper.SymbolContext;
+import compiler.symboltable.Objekt;
+
+public class ReturnNode
+                extends INode
 {
     private static int DOT_COUNTER = 0;
 
-    public ReturnNode( Node expr )
+    private Objekt relatedMethodObj;
+
+    public ReturnNode( INode expr, SymbolContext con, Objekt relatedMethodObj )
     {
         this.nodeClasz = NodeClasz.RETURN;
         this.name = "RETURN";
         this.dotName = name + "_" + DOT_COUNTER++;
 
         this.left = expr;
+
+        this.context = con;
+        this.expected = null;
+        this.relatedMethodObj = relatedMethodObj;
     }
+
+    @Override public void checkExpected()
+    {
+        if ( this.expected == null )
+        {
+            this.expected = relatedMethodObj.getReturnType();
+        }
+
+        if ( this.left != null )
+        {
+            if ( this.left.getType( expected ) != expected )
+            {
+                typeError( format( "Return type must be %s", expected ) );
+            }
+        }
+    }
+
 }

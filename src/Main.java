@@ -1,10 +1,9 @@
-import java.io.EOFException;
-
 import compiler.abstractsyntaxtree.DotASTCreator;
-import compiler.abstractsyntaxtree.Node;
+import compiler.abstractsyntaxtree.INode;
 import compiler.parser.Parser;
 import compiler.scanner.Input;
 import compiler.scanner.Scanner;
+import compiler.semanticanalysis.Typeanalysis;
 
 public class Main
 {
@@ -14,38 +13,16 @@ public class Main
 
     public static void main( String[] args )
     {
-        // testRun_Scanner();
-        testRun_Parser();
-    }
+        Parser parser = new Parser( new Scanner( new Input( source_2 ) ) );
 
-    private static void testRun_Parser()
-    {
-        Parser parser = new Parser( new Scanner( new Input( source_1 ) ) );
-
-        Node root = parser.Class();
+        INode root = parser.Class();
 
         DotASTCreator dotASTCreator = new DotASTCreator( "./ast.dot", false );
         dotASTCreator.createDotTree( root );
-    }
 
-    private static void testRun_Scanner()
-    {
-        Scanner scanner = new Scanner( new Input( source_1 ) );
+        Typeanalysis ts = new Typeanalysis( root );
+        ts.startTypeAnalysis();
 
-        try
-        {
-            while ( true )
-            {
-                scanner.getSym();
-                if ( scanner.context != null )
-                {
-                    System.out.println( scanner.context );
-                }
-            }
-        }
-        catch ( EOFException e )
-        {
-            System.out.print( "End of file." );
-        }
+        // compile and DONE!
     }
 }

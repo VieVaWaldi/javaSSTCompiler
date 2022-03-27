@@ -35,7 +35,7 @@ public class DotASTCreator
         }
     }
 
-    public void createDotTree( Node root )
+    public void createDotTree( INode root )
     {
         try
         {
@@ -67,7 +67,7 @@ public class DotASTCreator
     }
 
     /* Traverses the provided tree with deep search */
-    private StringBuilder traversePrint( Node node, StringBuilder sb )
+    private StringBuilder traversePrint( INode node, StringBuilder sb )
     {
         StringBuilder sbRank = new StringBuilder();
 

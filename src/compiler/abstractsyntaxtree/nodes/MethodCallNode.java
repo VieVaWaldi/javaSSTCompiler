@@ -1,17 +1,25 @@
 package compiler.abstractsyntaxtree.nodes;
 
-import compiler.abstractsyntaxtree.Node;
+import static compiler.symboltable.Type.Int;
+
+import compiler.abstractsyntaxtree.INode;
 import compiler.abstractsyntaxtree.NodeClasz;
+import compiler.helper.SymbolContext;
 import compiler.symboltable.Objekt;
 import compiler.symboltable.Type;
 
 public class MethodCallNode
-                extends Node
+                extends INode
 {
     private static int DOT_COUNTER = 0;
 
-    /* Real method obj can only be retrieved after we got the type! */
-    public MethodCallNode( String name, Objekt signature )
+    /**
+     * Objekt in here works as a signature to retrieve the real method from symbol table,
+     * once a parent node expects this signature call to be of a certain type.
+     * Then getType() will look for a methodObjekt with the right number of parameters,
+     * as well as expected return type.
+     */
+    public MethodCallNode( String name, Objekt signature, SymbolContext con )
     {
         this.nodeClasz = NodeClasz.METHOD;
 
@@ -19,19 +27,39 @@ public class MethodCallNode
         this.dotName = name + "_C_" + DOT_COUNTER++;
 
         this.obj = signature;
+
+        this.context = con;
+        this.expected = Int;
     }
 
-    /* ToDo you shouldnt use the objekts symboltable (which goes down), but the one the object resides in! */
-    @Override public Type getType()
+    @Override public Type getType( Type type )
     {
-        error( "NOT IMPLEMENTED --> METHOD CALL, lazy get return" );
         if ( this.type == null )
         {
-            // this.obj.setReturnType();
-            // this.obj = obj.getSymTable().getObject( obj ); // is one deeper but can search upward
-            // this.type = this.obj.getReturnType();
+            // Now, this method call must be of expected type
+            this.obj.setType( type );
+            this.obj.setReturnType( type );
+
+            // This symboltable is always below level of all method puts
+            Objekt thisMethodObj = this.obj.getSymTable().getObject( this.obj, this.context );
+            this.type = thisMethodObj.getReturnType();
         }
         return this.type;
     }
 
+    // Already checked for right count
+    @Override public void checkExpected()
+    {
+        INode currNode = this.left;
+
+        while ( currNode != null )
+        {
+            if ( currNode.getType( expected ) != expected )
+            {
+                typeError( "Parameter must be int" );
+            }
+
+            currNode = currNode.getLink();
+        }
+    }
 }

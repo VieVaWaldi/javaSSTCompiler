@@ -1,15 +1,15 @@
 package compiler.abstractsyntaxtree.nodes;
 
-import compiler.abstractsyntaxtree.Node;
+import compiler.abstractsyntaxtree.INode;
 import compiler.abstractsyntaxtree.NodeClasz;
 
 public class IfElseNode
-                extends Node
+                extends INode
 {
     private static int DOT_COUNTER = 0;
 
     /* Automatically creates @(IfNode) */
-    public IfElseNode( Node ifNode )
+    public IfElseNode( INode ifNode )
     {
         this.nodeClasz = NodeClasz.IFELSE;
         this.name = "IF_ELSE";

@@ -1,11 +1,11 @@
 package compiler.abstractsyntaxtree.nodes;
 
-import compiler.abstractsyntaxtree.Node;
+import compiler.abstractsyntaxtree.INode;
 import compiler.abstractsyntaxtree.NodeClasz;
 import compiler.symboltable.Type;
 
 public class ClassVarNode
-                extends Node
+                extends INode
 {
     public ClassVarNode( String name, Type type )
     {

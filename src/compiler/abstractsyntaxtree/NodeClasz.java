@@ -2,19 +2,19 @@ package compiler.abstractsyntaxtree;
 
 public enum NodeClasz
 {
-    CLASZ,
-    CONSTANT,
-    CLASS_VAR,
-    METHOD,
-    PARA,
-    METHOD_VAR,
+    // @formatter:off
+    CLASZ,      // Expects nothing
+    CONSTANT,   // Expects nothing
+    CLASS_VAR,  // Expects nothing
+    METHOD,     // DONE Expects all linked parameters to be int
+    PARA,       // Expects nothing
+    METHOD_VAR, // Expects nothing
 
-    EXPRESSION,
-    BINOPS,
-    UNOPS,
+    BINOPS,     // DONE see in Node.SubClasz
 
-    IFELSE,
-    IF,
-    WHILE,
-    RETURN
+    IFELSE,     // Expects nothing
+    IF,         // DONE Expects l = bool
+    WHILE,      // DONE Expects l = bool
+    RETURN      // Expects x = ret.obj.getST.getTypeOfMethod()
+    // @formatter:on
 }

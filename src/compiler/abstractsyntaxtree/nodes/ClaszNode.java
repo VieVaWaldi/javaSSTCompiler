@@ -1,10 +1,10 @@
 package compiler.abstractsyntaxtree.nodes;
 
-import compiler.abstractsyntaxtree.Node;
+import compiler.abstractsyntaxtree.INode;
 import compiler.abstractsyntaxtree.NodeClasz;
 
 public class ClaszNode
-                extends Node
+                extends INode
 {
     public ClaszNode( String name )
     {

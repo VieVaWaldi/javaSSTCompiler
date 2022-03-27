@@ -142,8 +142,15 @@ public class Symboltable
 
     private void variableError( SymbolContext context, String em )
     {
-        System.out.println( format( "$ VariableError at Line %s:%s with problematic symbol %s: \"%s\".\n$ %s",
-                        context.getLine(), context.getColumn(), context.getSym(), context.getValue(), em ) );
+        if ( context != null )
+        {
+            System.out.printf( "$ VariableError at Line %s:%s with %s: \"%s\".\n$ %s%n", context.getLine(),
+                            context.getColumn(), context.getSym(), context.getValue(), em );
+        }
+        else
+        {
+            System.out.printf( "$ VariableError, due to an error i cant tell you where :( \n$ %s%n", em );
+        }
         System.exit( 1 );
     }
 

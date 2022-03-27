@@ -2,12 +2,12 @@ package compiler.abstractsyntaxtree.nodes;
 
 import static compiler.symboltable.Type.Int;
 
-import compiler.abstractsyntaxtree.Node;
+import compiler.abstractsyntaxtree.INode;
 import compiler.abstractsyntaxtree.NodeClasz;
 import compiler.symboltable.Objekt;
 
 public class ParameterNode
-                extends Node
+                extends INode
 {
     private static int DOT_COUNTER = 0;
 

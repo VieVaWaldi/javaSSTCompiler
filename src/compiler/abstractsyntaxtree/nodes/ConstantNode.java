@@ -1,12 +1,12 @@
 package compiler.abstractsyntaxtree.nodes;
 
-import compiler.abstractsyntaxtree.Node;
+import compiler.abstractsyntaxtree.INode;
 import compiler.abstractsyntaxtree.NodeClasz;
 import compiler.symboltable.Objekt;
 import compiler.symboltable.Type;
 
 public class ConstantNode
-                extends Node
+                extends INode
 {
 
     public ConstantNode( String name, Type type, Objekt obj )

@@ -1,11 +1,11 @@
 package compiler.abstractsyntaxtree.nodes;
 
-import compiler.abstractsyntaxtree.Node;
+import compiler.abstractsyntaxtree.INode;
 import compiler.abstractsyntaxtree.NodeClasz;
 import compiler.symboltable.Type;
 
 public class NumberNode
-                extends Node
+                extends INode
 {
     private static int DOT_COUNTER = 0;
 

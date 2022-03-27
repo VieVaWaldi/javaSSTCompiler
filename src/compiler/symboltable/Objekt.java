@@ -199,6 +199,21 @@ public class Objekt
         this.intValue = value;
     }
 
+    public boolean hasValue()
+    {
+        return this.intValue != null;
+    }
+
+    public void setType( Type type )
+    {
+        this.type = type;
+    }
+
+    public void setReturnType( Type type )
+    {
+        this.returnType = type;
+    }
+
     public Type getReturnType()
     {
         return this.returnType;
@@ -229,9 +244,6 @@ public class Objekt
             }
         }
 
-        // varDef
-        // methodDef
-
         str.append( "]" );
 
         return str.toString();
@@ -241,11 +253,6 @@ public class Objekt
     {
         System.out.println( msg );
         System.exit( 1 );
-    }
-
-    public Objekt getParameter()
-    {
-        return this.parameterList;
     }
 }
 

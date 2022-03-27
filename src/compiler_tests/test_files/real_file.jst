@@ -1,3 +1,4 @@
+// Parser, ST, AST Test
 
 class GenesisClass {
 	final int var1 = 0;
@@ -7,11 +8,12 @@ class GenesisClass {
 	final int var5 = 100 ;
 
 	/* QUESTION --> Not part of the language */
-	// ERR final int negativ = -100;
+	// ERR final int negative = -100;
 
 	/* ERR SAME VARIABLE NAME */
 	// ERR final int var5 = 102;
-	/* FT METHOD SAME NAME AS VAR ALLOWED */
+
+	/* ToDo METHOD SAME NAME AS VAR ALLOWED */
 	// WIP final int meth2 = 90;
 
 	int dyn1;
@@ -24,15 +26,20 @@ class GenesisClass {
     // ERR   a=4;
     // ERR }
 
+    public int meth1() {
+        dyn1 = 3;
+        // ToDo no return in this method
+    }
+
     /* FT Overload, only dependent on var count AND return type */
     public void meth1(int m) {
-       return m;
+        dyn2 = 3;
     }
 
     /* FT Overload */
     public int meth1(int m) {
-        /* ToDo This has to return itself, not meth1 above, because of return type */
-       return meth1();
+       // FT only find method with return type int
+       return meth1(m);
     }
 	
 	public void meth1() {
@@ -45,9 +52,6 @@ class GenesisClass {
 		m1 = 10 + 13 - 22 / 45;
 		m2 = 20 + m2;
 		m3 = 0 + 5*m2;
-
-        /* WIP SOLL DAS GEHEN */
-		//m3 = 1 < 2;
 
 		while(m1 < m2) {
 		    /* ERR VAR GIBT ES */
@@ -68,9 +72,10 @@ class GenesisClass {
 			}
 		}
 
-		/* FT METHOD CALL WITH METHOD AS PARA */
-		// ToDo Expression of method
+		// FT Expressions as Paras
 		meth2(m1, m3+1/7);
+
+		// FT METHOD CALL WITH METHOD AS PARA
 		m2 = meth2(m2, meth2(m1,m3));
 		m2 = meth2(meth2(m1,m3), m2);
 		m2 = meth2(meth2(meth2(m1,m2),m3), meth2(meth2(m1,m2),m2));
@@ -83,9 +88,7 @@ class GenesisClass {
 		/* ERR WRONG PARA COUNT */
 		// ERR m3 = meth2(m1,meth1(), meth1(m1));
 		// ERR m2 = meth2(meth2(meth2(m1,m2),m3), meth2(meth2(m1,m2),m2), m3);
-
-        /* BUG meth2 takes 2 paras, this expression is 1  */
-        // BUG m3 = meth2(m1+m3);
+        // ERR m3 = meth2(m1+m3);
 		
 		return;
 	}
