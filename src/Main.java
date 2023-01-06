@@ -1,5 +1,6 @@
 import compiler.abstractsyntaxtree.DotASTCreator;
 import compiler.abstractsyntaxtree.INode;
+import compiler.bytecode.ByteCodeCompiler;
 import compiler.parser.Parser;
 import compiler.scanner.Input;
 import compiler.scanner.Scanner;
@@ -11,9 +12,11 @@ public class Main
 
     final static String source_2 = "src/compiler_tests/test_files/real_file.jst";
 
+    final static String source_3 = "src/compiler_tests/test_files/compiler_file.jst";
+
     public static void main( String[] args )
     {
-        Parser parser = new Parser( new Scanner( new Input( source_2 ) ) );
+        Parser parser = new Parser( new Scanner( new Input( source_1 ) ) );
 
         INode root = parser.Class();
 
@@ -23,6 +26,7 @@ public class Main
         Typeanalysis ts = new Typeanalysis( root );
         ts.startTypeAnalysis();
 
-        // compile and DONE!
+        ByteCodeCompiler btc = new ByteCodeCompiler( root );
+        btc.compile();
     }
 }

@@ -12,6 +12,7 @@ import compiler.abstractsyntaxtree.INode;
  * IFNode and WHILENode expect a boolean, thus ComparisonNodes must be converted
  * to the fake type boolean.
  * (Methods can return void, so every type error must be checked)
+ * <br><br>
  * x Checks if operands have the correct types (eg L + R, L and R must be int).
  * x Checks if method call has right parameter types
  * -> para count is checked, so you can remove number nodes and vars
@@ -23,6 +24,9 @@ import compiler.abstractsyntaxtree.INode;
  * -> Does that check every case?
  * x Checks if constants dont get assigned new values.
  * -> Could only happen left from the assignment node.
+ * x Check if all code paths return.
+ * x local vars must be init first on every usage except assignment
+ * ToDo o Cant call more than one return in method scope
  */
 public class Typeanalysis
 {
@@ -39,7 +43,7 @@ public class Typeanalysis
     }
 
     /**
-     * Traverses the provided tree with deep search recursively,
+     * Traverses the provided tree with depth search recursively,
      * making each node check itself.
      *
      * @param node root

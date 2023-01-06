@@ -52,6 +52,25 @@ public class Objekt
      */
     private Symboltable symTab; // Is a block
 
+    /**
+     * // ToDO NEWCODE TEST
+     * --> Local vars
+     */
+    private boolean wasAssignedValue = false;
+
+    /**
+     * Callable by AssignmentNode, to clarify that this local variable was assigned a value.
+     */
+    public void setWasAssignedValue()
+    {
+        this.wasAssignedValue = true;
+    }
+
+    public boolean getWasAssignedValue()
+    {
+        return this.wasAssignedValue;
+    }
+
     /***************************************************************************/
 
     public Objekt( String name )
@@ -155,6 +174,18 @@ public class Objekt
         }
     }
 
+    public int getParaCount()
+    {
+        int count = 0;
+        Objekt curr = parameterList;
+        while ( curr != null )
+        {
+            count++;
+            curr = curr.next;
+        }
+        return count;
+    }
+
     /***************************************************************************/
 
     public String getName()
@@ -199,6 +230,12 @@ public class Objekt
         this.intValue = value;
     }
 
+    public int getValue()
+    {
+        long ret = this.intValue;
+        return (int) ret;
+    }
+
     public boolean hasValue()
     {
         return this.intValue != null;
@@ -217,6 +254,11 @@ public class Objekt
     public Type getReturnType()
     {
         return this.returnType;
+    }
+
+    public Objekt getParameter()
+    {
+        return this.parameterList;
     }
 
     public String toString()

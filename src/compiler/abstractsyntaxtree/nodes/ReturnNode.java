@@ -43,4 +43,9 @@ public class ReturnNode
         }
     }
 
+    @Override public void checkRules()
+    {
+        checkUnassignedVarUsage( this.left );
+    }
+
 }

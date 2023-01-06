@@ -5,6 +5,7 @@ package compiler.parser;
  */
 public enum SyntaxErrorMsgs
 {
+    //@formatter:off
     ERR_CLASS_START_WITH( "File must start with \"class\" identifier." ),
     ERR_CLASS_NAME( "Class needs a valid identifier." ),
 
@@ -29,8 +30,9 @@ public enum SyntaxErrorMsgs
     ERR_REACHED_EOF( "Wrong placement of brackets, reached end of file." ),
 
     ERR_EXP_MIGHT_PUT_LOCAL_NOT_ALLOWED(" You might be trying to use local declarations after statement sequences which is illegal in this language.");
+    //@formatter:on
 
-    private String msg;
+    private final String msg;
 
     SyntaxErrorMsgs( final String msg )
     {

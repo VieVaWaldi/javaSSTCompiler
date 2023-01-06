@@ -23,11 +23,13 @@ public class FactorNode
 
         switch ( sym )
         {
-            case TIMES -> {
+            case TIMES ->
+            {
                 this.name = "*";
                 this.nodeSubClasz = NodeSubClasz.TIMES;
             }
-            case QUOT -> {
+            case QUOT ->
+            {
                 this.name = "/";
                 this.nodeSubClasz = NodeSubClasz.DIV;
             }
@@ -59,5 +61,11 @@ public class FactorNode
                 typeError( "Right Factor must be int" );
             }
         }
+    }
+
+    @Override public void checkRules()
+    {
+        checkUnassignedVarUsage( this.left );
+        checkUnassignedVarUsage( this.right );
     }
 }

@@ -62,4 +62,15 @@ public class MethodCallNode
             currNode = currNode.getLink();
         }
     }
+
+    @Override public void checkRules()
+    {
+        INode currNode = this.left;
+
+        while ( currNode != null )
+        {
+            checkUnassignedVarUsage( currNode );
+            currNode = currNode.getLink();
+        }
+    }
 }

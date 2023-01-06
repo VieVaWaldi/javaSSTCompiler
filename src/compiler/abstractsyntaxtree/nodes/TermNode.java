@@ -7,6 +7,7 @@ import compiler.abstractsyntaxtree.NodeClasz;
 import compiler.abstractsyntaxtree.NodeSubClasz;
 import compiler.helper.SymbolContext;
 import compiler.scanner.SymConst;
+import compiler.symboltable.ObjektConst;
 import compiler.symboltable.Type;
 
 public class TermNode
@@ -21,18 +22,21 @@ public class TermNode
 
         switch ( sym )
         {
-            case PLUS -> {
-                this.name = "PLUS";
+            case PLUS ->
+            {
+                this.name = "+";
+                this.dotName = "PLUS_" + DOT_COUNTER++;
                 this.nodeSubClasz = NodeSubClasz.PLUS;
             }
-            case MINUS -> {
-                this.name = "MINUS";
+            case MINUS ->
+            {
+                this.name = "-";
+                this.dotName = "MINUS_" + DOT_COUNTER++;
                 this.nodeSubClasz = NodeSubClasz.BO_MINUS;
             }
             default -> error( "TermNode got wrong SymConst" );
 
         }
-        this.dotName = this.name + "_" + DOT_COUNTER++;
         this.type = Type.Int;
 
         this.left = left;
@@ -58,5 +62,11 @@ public class TermNode
                 typeError( "Right Term must be int" );
             }
         }
+    }
+
+    @Override public void checkRules()
+    {
+        checkUnassignedVarUsage( this.left );
+        checkUnassignedVarUsage( this.right );
     }
 }

@@ -1,5 +1,8 @@
 package compiler.abstractsyntaxtree.nodes;
 
+import static compiler.symboltable.ObjektConst.CLASS_VAR;
+import static compiler.symboltable.ObjektConst.CONSTANT;
+import static compiler.symboltable.ObjektConst.METHOD_VAR;
 import static compiler.symboltable.Type.Int;
 
 import compiler.abstractsyntaxtree.INode;
@@ -7,6 +10,7 @@ import compiler.abstractsyntaxtree.NodeClasz;
 import compiler.abstractsyntaxtree.NodeSubClasz;
 import compiler.helper.SymbolContext;
 import compiler.scanner.SymConst;
+import compiler.symboltable.Objekt;
 import compiler.symboltable.Type;
 
 public class CompareNode
@@ -22,23 +26,28 @@ public class CompareNode
 
         switch ( sym )
         {
-            case EQUALS -> {
+            case EQUALS ->
+            {
                 this.name = "==";
                 this.nodeSubClasz = NodeSubClasz.EQUALS;
             }
-            case LTHAN -> {
+            case LTHAN ->
+            {
                 this.name = "<";
                 this.nodeSubClasz = NodeSubClasz.LESSTHAN;
             }
-            case LTHANOR -> {
+            case LTHANOR ->
+            {
                 this.name = "<=";
                 this.nodeSubClasz = NodeSubClasz.LESSEQUALSTHAN;
             }
-            case GTHAN -> {
+            case GTHAN ->
+            {
                 this.name = ">";
                 this.nodeSubClasz = NodeSubClasz.GREATERTHAN;
             }
-            case GTHANOR -> {
+            case GTHANOR ->
+            {
                 this.name = ">=";
                 this.nodeSubClasz = NodeSubClasz.GREATEREQUALSTHAN;
             }
@@ -71,5 +80,11 @@ public class CompareNode
                 typeError( "Right Node must be int" );
             }
         }
+    }
+
+    @Override public void checkRules()
+    {
+        checkUnassignedVarUsage( this.left );
+        checkUnassignedVarUsage( this.right );
     }
 }

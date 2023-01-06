@@ -11,6 +11,8 @@ class Test {
 	int dyn2;
 	int dyn3;
 
+	int unInitClassVar;
+
 	public void meth1(int a) {
 	    a = 1;
 	    // FT void methods cant have a return
@@ -18,7 +20,12 @@ class Test {
 	}
 
 	public int meth1(int b) {
-	    return b;
+	    // FT Cant use uninitialized Method_var or Class_var
+        // ERR return unInitClassVar;
+        // ToDo 2 returns
+        // ERR 2 returns
+        return b;
+        return b;
 	}
 
 	public void meth1() {
@@ -26,7 +33,27 @@ class Test {
 		int m2;
 		int m3;
 
-		m1 = var4;
+		int unInitMethodVar;
+
+		m1 = var1;
+
+        // FT Cant use uninitialized Method_var or Class_var
+        // ERR m1 = unInitMethodVar;
+        // ERR m1 = unInitClassVar;
+        // ERR m1 = unInitMethodVar + 1;
+        // ERR m1 = unInitClassVar - 10;
+        // ERR m1 = 1 + unInitMethodVar;
+        // ERR m1 = 10 * unInitMethodVar;
+        // ERR m1 = unInitClassVar / 2;
+        // ERR meth1(unInitMethodVar);
+        // if (unInitMethodVar >= 1)
+        // {
+        //     m1 = 10;
+        // }
+        // else
+        // {
+        //     m1 = 20;
+        // }
 
 		// FT, Cant assign constant
 		// ERR var4 = 3;
@@ -43,7 +70,7 @@ class Test {
 		// ERR m2 = m2 * m3 == 3;
 
 		// FT condition only with bool ops
-		// BUG while (1==) {
+		// ERR while (1==) {
 		// ERR while (1+1) {
 		    // ERR m2 = m2+1;
 		    // FT COMP only takes int AND there is no int meth1()
@@ -55,7 +82,7 @@ class Test {
             // ERR }
         // ERR }
 
-		while(m1 < m2) {
+		while(m1 < 190) {
 			m1 = m1 + 1;
 			if (m1 == 15) {
 				m3 = m3 + 1;
@@ -83,8 +110,6 @@ class Test {
 		// ERR m3 = meth1(1==3);
 
 		m2 = meth2(meth2(m1,m3), m2);
-
-		return;
 	}
 
 	public int meth2(int m, int n) {

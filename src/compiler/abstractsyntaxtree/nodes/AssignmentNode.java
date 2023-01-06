@@ -1,6 +1,8 @@
 package compiler.abstractsyntaxtree.nodes;
 
+import static compiler.symboltable.ObjektConst.CLASS_VAR;
 import static compiler.symboltable.ObjektConst.CONSTANT;
+import static compiler.symboltable.ObjektConst.METHOD_VAR;
 import static compiler.symboltable.Type.Int;
 
 import compiler.abstractsyntaxtree.INode;
@@ -55,5 +57,17 @@ public class AssignmentNode
         {
             typeError( "Cant assign value to a constant." );
         }
+
+        // Set was_assigned flag for local variables, so they can be used
+        if ( varObj.objClazEquals( CLASS_VAR ) )
+        {
+            varObj.setWasAssignedValue();
+        }
+        if ( varObj.objClazEquals( METHOD_VAR ) )
+        {
+            varObj.setWasAssignedValue();
+        }
+
+        checkUnassignedVarUsage( this.right );
     }
 }

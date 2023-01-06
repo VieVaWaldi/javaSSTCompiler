@@ -18,7 +18,7 @@ import compiler.symboltable.Objekt;
 import compiler.symboltable.Symboltable;
 
 /**
- * 2. Phase: syntax analysis.
+ * 2. Phase: Syntax analysis.
  * Phase 2.1. Richtige Symbole an richtiger Stelle überprüfen, checkt dadurch ob die Grammatik passt.
  * Hat für jedes NT eine eigene Methode.
  * Methods can perform a lookahead, meaning the next sym is already in memory. And methods can expect
@@ -184,7 +184,7 @@ public class Parser
         while ( symEquals( PUBLIC ) )
         {
             /* NODE METHOD CREATE */
-            INode methodeNode = MethodDeclaration();
+            MethodNode methodeNode = MethodDeclaration();
             nextSym();
 
             /* NODE LINK */
@@ -194,11 +194,11 @@ public class Parser
         return declarationNode;
     }
 
-    private INode MethodDeclaration()
+    private MethodNode MethodDeclaration()
                     throws EOFException
     {
         /* NODE METHOD HEAD AND BODY left */
-        INode methodNode = MethodHead();
+        MethodNode methodNode = MethodHead();
         methodNode.appendLeft( MethodBody() );
 
         /* SYMTAB BLOCK EXIT --> method exit */
@@ -210,7 +210,7 @@ public class Parser
     /**
      * Assumes PUBLIC has already been checked!
      */
-    private INode MethodHead()
+    private MethodNode MethodHead()
                     throws EOFException
     {
         MethodType();
@@ -226,7 +226,7 @@ public class Parser
         symbolTableCurrent = symTabMethod;
 
         /* NODE METHOD CREATE */
-        MethodNode methodNode = new MethodNode( con.getValue(), getLastCon().getSym(), lastMethodObj );
+        MethodNode methodNode = new MethodNode( con.getValue(), getLastCon().getSym(), lastMethodObj, con );
         methodNode.appendLeft( FormalParameters() );
 
         return methodNode;
@@ -504,7 +504,7 @@ public class Parser
 
         nextSym();
         ifNode.appendRight( StatementSequence() );
-        IfElseNode ifElseNode = new IfElseNode( ifNode );
+        IfElseNode ifElseNode = new IfElseNode( ifNode, getLastCon() );
 
         throwErrIfSymNotEqual( RBRACK, ERR_EXPECTED_RB );
         nextSymThrowErrIfNotEqual( ELSE, ERR_EXPECTED_LB );

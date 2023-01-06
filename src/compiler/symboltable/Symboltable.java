@@ -6,7 +6,7 @@ import static java.lang.String.format;
 import compiler.helper.SymbolContext;
 
 /**
- * Phase 2.2 symbol table. Used in multiple phases but is created in 2.1.
+ * Phase 2.2 Symbol Table. Used in multiple phases but is created in 2.1.
  * <p>
  * Creates a list for all variables in this sym tables scope.
  * Special Blocks are not needed because variables can only be defined
@@ -83,7 +83,7 @@ public class Symboltable
     }
 
     /**
-     * Same as below but takes the Objekt instead of, for method calls!
+     * Same as below but takes the Objekt instead of its name. For method calls!
      */
     public Objekt getObject( Objekt obj, SymbolContext context )
     {
@@ -100,6 +100,10 @@ public class Symboltable
                                             obj.getName() ) );
             return null;
         }
+    }
+
+    public Objekt getHead() {
+        return this.head;
     }
 
     /**

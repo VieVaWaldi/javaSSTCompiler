@@ -12,7 +12,6 @@
 //{
 //    private Input input;
 //
-//    final private String sourcePathBadFile = "src/compiler_tests/test_files/bad_file.jst";
 //
 //    final private String sourcePathSimpleFile = "src/compiler_tests/test_files/simple_file.jst";
 //

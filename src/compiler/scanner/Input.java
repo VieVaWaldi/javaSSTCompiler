@@ -120,6 +120,5 @@ public class Input
             System.out.println( "File could not be read." );
             e.printStackTrace();
         }
-
     }
 }

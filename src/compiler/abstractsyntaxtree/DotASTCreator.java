@@ -60,7 +60,7 @@ public class DotASTCreator
         }
         catch ( IOException e )
         {
-            System.out.println( "An error occurred." );
+            System.out.println( "An error occurred, trying to write the dot file." );
             e.printStackTrace();
         }
 
