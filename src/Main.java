@@ -16,7 +16,7 @@ public class Main
 
     public static void main( String[] args )
     {
-        Parser parser = new Parser( new Scanner( new Input( source_1 ) ) );
+        Parser parser = new Parser( new Scanner( new Input( source_3 ) ) );
 
         INode root = parser.Class();
 

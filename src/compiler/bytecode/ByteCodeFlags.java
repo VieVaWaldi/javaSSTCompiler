@@ -13,9 +13,10 @@ public class ByteCodeFlags
     static byte TYPE_UTF8 = 0x01;
     static byte TYPE_INT = 0x03;
     static byte TYPE_CLASS = 0x07;
-    static byte TYPE_FIELREF = 0x09;
-    static byte TYPE_METHREF = 0x0A;
-    static byte TYPE_NANDT = 0x0C;
+    static byte TYPE_STRING = 0x08;
+    static byte TYPE_FIELDREF = 0x09;
+    static byte TYPE_METHODREF = 0x0A;
+    static byte TYPE_NAMEANDTYPE = 0x0C;
 
     static byte MOD_STATIC_PUBLIC = 0x09;
     static byte MOD_FINAL_STATIC_PUBLIC = 0x19;
