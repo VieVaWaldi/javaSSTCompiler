@@ -33,6 +33,7 @@ import java.nio.ByteBuffer;
 import java.nio.ShortBuffer;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
+import java.util.Arrays;
 
 import compiler.abstractsyntaxtree.INode;
 import compiler.abstractsyntaxtree.NodeClasz;
@@ -69,12 +70,6 @@ public class ByteCodeCompiler
 
     private int constPoolLength;
 
-    private boolean useTempStack;
-
-    private byte[] tempStack;
-
-    private int idxTempStack;
-
     public ByteCodeCompiler( INode root )
     {
         this.root = root;
@@ -83,15 +78,11 @@ public class ByteCodeCompiler
         prepareFile();
 
         this.code = new byte[CODE_MAX];
-        this.tempStack = new byte[CODE_MAX];
         for ( int i = 0; i < CODE_MAX; i++ )
         {
             code[i] = ESCAPE_SEQ;
-            tempStack[i] = ESCAPE_SEQ;
         }
         this.idx = 0;
-        this.idxTempStack = 0;
-        useTempStack = false;
     }
 
     public void compile()
@@ -724,13 +715,19 @@ public class ByteCodeCompiler
         insertEmptyU2();
         methodCodeAttLength_Bytes += 2;
 
-        /* Lazy CodeLength insert and reset tracker variables */
+        /* Lazy CodeLength insert */
         insertCodeAt( toU4( methodCodeAttLength_Bytes ), lazyIdx_MethodCodeAttLength_U4 );
         insertCodeAt( toU2( lazyStack_Count ), lazyIdx_StackCount_U2 );
 
+        /* Reset all tracker variables for one method */
         methodCodeAttLength_Bytes = 0;
         codeLength_Bytes = 0;
         lazyStack_Count = 0;
+        visitIfElseIdx = -1;
+        lazy_idxOfElse_U2_List = new ArrayList<>();
+        idxOfElse_In_code_List = new ArrayList<>();
+        lazy_idxOfIfElseEnd_U2_List = new ArrayList<>();
+        idxOfIfElseEnd_In_code_List = new ArrayList<>();
     }
 
     /**
@@ -821,41 +818,45 @@ public class ByteCodeCompiler
                 /* For cmp operators, remember idx of goto in tmpStack */
                 else if ( node.subClaszEquals( EQUALS ) )
                 {
-                    insertCode( 0xA5 ); // if_acmpeq
-                    lazy_idxOfElse_U2 = idxTempStack;
-                    idxOfElse_In_code = codeLength_Bytes;
+                    insertCode( 0x9F ); // if_icmpeq, ints are equal
+                    lazy_idxOfElse_U2_List.add( visitIfElseIdx, idx );
+                    idxOfElse_In_code_List.add( visitIfElseIdx, codeLength_Bytes );
                     insertEmptyU2();
                     codeLength_Bytes += 3;
                 }
                 else if ( node.subClaszEquals( LESSTHAN ) )
                 {
-                    insertCode( 0xA1 ); // if_icmplt
-                    lazy_idxOfElse_U2 = idxTempStack;
-                    idxOfElse_In_code = codeLength_Bytes;
+                    // insertCode( 0xA1 ); // if_icmplt
+                    insertCode( 0xA3 ); // if_icmpgt
+                    lazy_idxOfElse_U2_List.add( visitIfElseIdx, idx );
+                    idxOfElse_In_code_List.add( visitIfElseIdx, codeLength_Bytes );
                     insertEmptyU2();
                     codeLength_Bytes += 3;
                 }
                 else if ( node.subClaszEquals( LESSEQUALSTHAN ) )
                 {
-                    insertCode( 0xA4 ); // if_icmple
-                    lazy_idxOfElse_U2 = idxTempStack;
-                    idxOfElse_In_code = codeLength_Bytes;
+                    // insertCode( 0xA4 ); // if_icmple
+                    insertCode( 0xA2 ); // if_icmpge
+                    lazy_idxOfElse_U2_List.add( visitIfElseIdx, idx );
+                    idxOfElse_In_code_List.add( visitIfElseIdx, codeLength_Bytes );
                     insertEmptyU2();
                     codeLength_Bytes += 3;
                 }
                 else if ( node.subClaszEquals( GREATERTHAN ) )
                 {
-                    insertCode( 0xA3 ); // if_icmpgt
-                    lazy_idxOfElse_U2 = idxTempStack;
-                    idxOfElse_In_code = codeLength_Bytes;
+                    // insertCode( 0xA3 ); // if_icmpgt
+                    insertCode( 0xA1 ); // if_icmplt
+                    lazy_idxOfElse_U2_List.add( visitIfElseIdx, idx );
+                    idxOfElse_In_code_List.add( visitIfElseIdx, codeLength_Bytes );
                     insertEmptyU2();
                     codeLength_Bytes += 3;
                 }
                 else if ( node.subClaszEquals( GREATEREQUALSTHAN ) )
                 {
-                    insertCode( 0xA2 ); // if_icmpge
-                    lazy_idxOfElse_U2 = idxTempStack;
-                    idxOfElse_In_code = codeLength_Bytes;
+                    // insertCode( 0xA2 ); // if_icmpge
+                    insertCode( 0xA4 ); // if_icmple
+                    lazy_idxOfElse_U2_List.add( visitIfElseIdx, idx );
+                    idxOfElse_In_code_List.add( visitIfElseIdx, codeLength_Bytes );
                     insertEmptyU2();
                     codeLength_Bytes += 3;
                 }
@@ -981,8 +982,8 @@ public class ByteCodeCompiler
             {
                 /* On exiting if remember: [goto ?idxOfFin] = idxTmpStack, insertEmptyU2() */
                 insertCode( 0xA7 ); // goto idx
-                lazy_idxOfIfElseEnd_U2 = idxTempStack;
-                idxOfIfElseEnd_In_code = codeLength_Bytes;
+                lazy_idxOfIfElseEnd_U2_List.add( visitIfElseIdx, idx );
+                idxOfIfElseEnd_In_code_List.add( visitIfElseIdx, codeLength_Bytes );
                 insertEmptyU2();
                 codeLength_Bytes += 3;
 
@@ -991,16 +992,18 @@ public class ByteCodeCompiler
 
                 int idx = 2;
                 /* Offset of jump is current idx in bytecode */
-                insertCodeAt( toU2( codeLength_Bytes - idxOfElse_In_code ), lazy_idxOfElse_U2 );
+                insertCodeAt( toU2( codeLength_Bytes - idxOfElse_In_code_List.get( visitIfElseIdx ) ),
+                                lazy_idxOfElse_U2_List.get( visitIfElseIdx ) );
                 break;
             }
             case IFELSE:
             {
                 /* On exit ifElse (switch case): lazy insert codeLength_Byte+1 at lazy_idxOfIfElseEnd_U2 */
-                insertCodeAt( toU2( codeLength_Bytes - idxOfIfElseEnd_In_code ), lazy_idxOfIfElseEnd_U2 );
+                insertCodeAt( toU2( codeLength_Bytes - idxOfIfElseEnd_In_code_List.get( visitIfElseIdx ) ),
+                                lazy_idxOfIfElseEnd_U2_List.get( visitIfElseIdx ) );
 
-                /* Insert tmpStack in code */
-                flushTempStackInCode();
+                /* Exit ifElse nesting. */
+                visitIfElseIdx--;
                 break;
             }
             case WHILE:
@@ -1033,15 +1036,21 @@ public class ByteCodeCompiler
             produceCode( node.getLink(), currMethodNode );
     }
 
-    /* Idx in tempStack for goto conditions. */
+    /* Idx in tempStack for goto conditions, idx in list maps on mapping of IfElse. */
 
-    private int lazy_idxOfElse_U2 = -1; // if condition is false -> goto else
+    // if condition is false -> goto else
+    private ArrayList<Integer> lazy_idxOfElse_U2_List = new ArrayList<>();
 
-    private int idxOfElse_In_code = -1;
+    private ArrayList<Integer> idxOfElse_In_code_List = new ArrayList<>();
 
-    private int lazy_idxOfIfElseEnd_U2 = -1; // if condition is true and finished -> goto end of else
+    // if condition is true and finished -> goto end of else
+    private ArrayList<Integer> lazy_idxOfIfElseEnd_U2_List = new ArrayList<>();
 
-    private int idxOfIfElseEnd_In_code = -1;
+    private ArrayList<Integer> idxOfIfElseEnd_In_code_List = new ArrayList<>();
+
+    /* visitIfElseIdx describes idx in list for current ifElse nesting.  */
+
+    private int visitIfElseIdx = -1;
 
     /**
      * Should ve used the visitor pattern but whatever by now.
@@ -1060,7 +1069,12 @@ public class ByteCodeCompiler
     {
         if ( node.classEquals( NodeClasz.IFELSE ) )
         {
-            useTempStack = true;
+            visitIfElseIdx++;
+            /* Add one item for each nesting */
+            lazy_idxOfElse_U2_List.add( 0 );
+            idxOfElse_In_code_List.add( 0 );
+            lazy_idxOfIfElseEnd_U2_List.add( 0 );
+            idxOfIfElseEnd_In_code_List.add( 0 );
         }
     }
 
@@ -1294,27 +1308,12 @@ public class ByteCodeCompiler
         insertEmptyU2();
     }
 
-    private void flushTempStackInCode()
-    {
-        useTempStack = false;
-        insertCode( tempStack );
-        this.tempStack = new byte[CODE_MAX];
-        for ( int i = 0; i < CODE_MAX; i++ )
-        {
-            tempStack[i] = ESCAPE_SEQ;
-        }
-        this.idxTempStack = 0;
-    }
-
     private void insertCode( int iin )
     {
         byte in = (byte) iin;
         if ( idx < CODE_MAX )
         {
-            if ( useTempStack )
-                tempStack[idxTempStack++] = in;
-            else
-                code[idx++] = in;
+            code[idx++] = in;
         }
         else
             compileError( "Your code is too long." );
@@ -1324,11 +1323,7 @@ public class ByteCodeCompiler
     {
         if ( idx < CODE_MAX )
         {
-            if ( useTempStack )
-                tempStack[at++] = (byte) in;
-            else
-                code[at++] = (byte) in;
-
+            code[at++] = (byte) in;
         }
         else
             compileError( "Your code is too long." );
@@ -1344,10 +1339,7 @@ public class ByteCodeCompiler
                 {
                     break;
                 }
-                if ( useTempStack )
-                    tempStack[idxTempStack++] = b;
-                else
-                    code[idx++] = b;
+                code[idx++] = b;
             }
         }
         else
@@ -1381,10 +1373,7 @@ public class ByteCodeCompiler
                 {
                     break;
                 }
-                if ( useTempStack )
-                    tempStack[at++] = b;
-                else
-                    code[at++] = b;
+                code[at++] = b;
             }
         }
         else

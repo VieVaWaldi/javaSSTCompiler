@@ -10,36 +10,36 @@ class Genesis {
     /* ()V main is obligatory starting point --> main paras MUST BE EMPTY */
 	public void main() {
 
-	    int a;
-	    int b;
-	    a = 1 + 5 * 3 * 2;
-	    b = a + var3;
-	    println(a);
-	    println(b);
-	    println(var2);
-        iAmAField = 1 + var3;
-	    println(iAmAField);
-	    b = meth(1);
-	    println(b);
+	    //int a;
+	    //int b;
+	    //a = 1 + 5 * 3 * 2;
+	    //b = a + var3;
+	    //println(a);
+	    //println(b);
+	    //println(var2);
+        //iAmAField = 1 + var3;
+	    //println(iAmAField);
+	    //println(meth(1));
 
-        a = 12;
+        int s;
+        s = 10;
         // ToDo: if und while nur mit -noverify weil der sonst stackmapAttribute erwartet
-        if (a < 11)
+        if (s < 11)
         {
-                    if (a < 11)
-                    {
-                        a = 12;
-                    }
-                    else
-                    {
-                        a = 13;
-                    }
+            if (s > 9)
+            {
+                s = meth(1);
+            }
+            else
+            {
+                s = 2;
+            }
         }
         else
         {
-            a = 13;
+            s = 4;
         }
-        println(a);
+        println(s);
         return;
 
 	    // ToDo Err there must be no return for void methods
@@ -48,7 +48,7 @@ class Genesis {
     public int meth(int p)
     {
         int c;
-        iAmAField = 8;
+        iAmAField = 5;
         c = 2;
         p = p + 2;
         return p + 1 + c + var3 - iAmAField;
