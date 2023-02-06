@@ -1,27 +1,56 @@
 class Genesis {
 
-	final int var1 = 9999;
+	final int var1 = 8;
 	final int var2 = 5;
 	final int var3 = 3;
 	final int var4 = var2 + var3 * 2;
 
-	int iAmAField; // ToDo see that in hex
+	int iAmAField;
 
     /* ()V main is obligatory starting point --> main paras MUST BE EMPTY */
 	public void main() {
+
 	    int a;
 	    int b;
-	    a = 333;
-	    //b = var4 + drei(1, 2);
-	    // println(aaa);
+	    a = 1 + 5 * 3 * 2;
+	    b = a + var3;
+	    println(a);
+	    println(b);
+	    println(var2);
+        iAmAField = 1 + var3;
+	    println(iAmAField);
+	    b = meth(1);
+	    println(b);
+
+        a = 12;
+        // ToDo: if und while nur mit -noverify weil der sonst stackmapAttribute erwartet
+        if (a < 11)
+        {
+                    if (a < 11)
+                    {
+                        a = 12;
+                    }
+                    else
+                    {
+                        a = 13;
+                    }
+        }
+        else
+        {
+            a = 13;
+        }
+        println(a);
+        return;
+
+	    // ToDo Err there must be no return for void methods
 	}
 
-	//public int drei(int n, int m) {
-	//    int a;
-	//    int b;
-	//    int c;
-	//    return n + m;
-	//    // ToDo ERR return of int can be void
-	//    // return;
-	//}
+    public int meth(int p)
+    {
+        int c;
+        iAmAField = 8;
+        c = 2;
+        p = p + 2;
+        return p + 1 + c + var3 - iAmAField;
+    }
 }

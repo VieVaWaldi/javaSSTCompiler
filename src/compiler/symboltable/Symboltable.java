@@ -95,6 +95,11 @@ public class Symboltable
         }
         else
         {
+            /* HERE (probably earlier) i should ignore special methods not found, eg println */
+            if (obj.getName().equals( "println" ) && obj.getParaCount() == 1 && obj.getReturnType() != Type.Int)
+            {
+               return null;
+            }
             variableError( context,
                             format( "Method %s has not been defined. Maybe you used the wrong number of parameters.",
                                             obj.getName() ) );

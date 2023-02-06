@@ -26,6 +26,7 @@ public class AssignmentNode
         this.dotName = "ASSIGN_" + DOT_COUNTER++;
 
         this.left = var;
+        this.left.setIsPartOfAssignment();
         this.right = expr;
 
         this.expected = Int;

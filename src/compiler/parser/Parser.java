@@ -178,7 +178,7 @@ public class Parser
             nextSym();
 
             /* NODE LINK --> Doesnt have to be in AST, but in ST */
-            // declarationNode = linkNewNode( declarationNode, classVarNode );
+            declarationNode = linkNewNode( declarationNode, classVarNode );
         }
 
         while ( symEquals( PUBLIC ) )

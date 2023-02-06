@@ -1,6 +1,5 @@
 package compiler.abstractsyntaxtree;
 
-import compiler.abstractsyntaxtree.nodes.ConstantNode;
 import compiler.helper.SymbolContext;
 import compiler.symboltable.Objekt;
 import compiler.symboltable.ObjektConst;
@@ -45,6 +44,12 @@ public abstract class INode
      * The expected type of child nodes for semantic analysis.
      */
     protected Type expected;
+
+    /**
+     * Fuckery because i havent touched the code in a year,
+     * used while generating byte code to know this variable is left of an assignment.
+     */
+    protected boolean isPartOfAssignment = false;
 
     public void appendLeft( INode node )
     {
@@ -158,6 +163,16 @@ public abstract class INode
     public void setExpressionConst( int val )
     {
         this.expressionConst = val;
+    }
+
+    public void setIsPartOfAssignment()
+    {
+        this.isPartOfAssignment = true;
+    }
+
+    public boolean isPartOfAssignment()
+    {
+        return isPartOfAssignment;
     }
 
     public String getDotName()

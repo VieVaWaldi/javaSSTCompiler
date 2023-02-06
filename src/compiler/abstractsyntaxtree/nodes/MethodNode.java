@@ -77,7 +77,6 @@ public class MethodNode
             {
                 typeError( "Not all paths return." );
             }
-
         }
         else if ( currNode instanceof AssignmentNode )
         {
@@ -87,6 +86,5 @@ public class MethodNode
         {
             typeError( "Not all paths return." );
         }
-
     }
 }

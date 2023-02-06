@@ -30,11 +30,14 @@ import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.nio.ShortBuffer;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 
 import compiler.abstractsyntaxtree.INode;
+import compiler.abstractsyntaxtree.NodeClasz;
 import compiler.abstractsyntaxtree.nodes.AssignmentNode;
+import compiler.abstractsyntaxtree.nodes.ClassVarNode;
 import compiler.abstractsyntaxtree.nodes.ConstantNode;
 import compiler.abstractsyntaxtree.nodes.FactorNode;
 import compiler.abstractsyntaxtree.nodes.MethodNode;
@@ -42,6 +45,7 @@ import compiler.abstractsyntaxtree.nodes.MethodVarNode;
 import compiler.abstractsyntaxtree.nodes.NumberNode;
 import compiler.abstractsyntaxtree.nodes.TermNode;
 import compiler.symboltable.Objekt;
+import compiler.symboltable.ObjektConst;
 import compiler.symboltable.Type;
 
 /**
@@ -65,6 +69,12 @@ public class ByteCodeCompiler
 
     private int constPoolLength;
 
+    private boolean useTempStack;
+
+    private byte[] tempStack;
+
+    private int idxTempStack;
+
     public ByteCodeCompiler( INode root )
     {
         this.root = root;
@@ -73,11 +83,15 @@ public class ByteCodeCompiler
         prepareFile();
 
         this.code = new byte[CODE_MAX];
+        this.tempStack = new byte[CODE_MAX];
         for ( int i = 0; i < CODE_MAX; i++ )
         {
             code[i] = ESCAPE_SEQ;
+            tempStack[i] = ESCAPE_SEQ;
         }
         this.idx = 0;
+        this.idxTempStack = 0;
+        useTempStack = false;
     }
 
     public void compile()
@@ -149,9 +163,6 @@ public class ByteCodeCompiler
         /* METHODS COUNT AND DEFINITIONS */
         insertCode( toU2( idxListOfFieldMethod.size() ) );
         insertMethodPool();
-        // or this ToDo
-        // insertCode( EMPTY );
-        // insertCode( EMPTY );
 
         /* - AMOUNT OF ATTRIBUTES (meta data) */
         insertCode( EMPTY ); // u2
@@ -173,7 +184,10 @@ public class ByteCodeCompiler
 
     private int idxOfConstHello;
 
+    private int idxOfFuckYouTempVariable;
+
     private final ArrayList<Integer> idxListOfFieldConst = new ArrayList<>();
+    private final ArrayList<Integer> idxListOfFields = new ArrayList<>();
     private final ArrayList<Integer> idxListOfFieldMethod = new ArrayList<>();
     //@formatter:on
 
@@ -202,7 +216,7 @@ public class ByteCodeCompiler
         /* #4 CONST_Utf8 {1tag, 2len, tab} */
         cp_insertBlock_U1_U2_Tab( TYPE_UTF8, "java/lang/Object" );
 
-        /* #5+ FIELDS */
+        /* #5.1 Consts and 5.2 FIELDS */
         INode fieldNode = root.getLeft();
 
         /* #5.0 CONST_UTF8 DESC { 1tag, 2len, tab = I} */
@@ -213,13 +227,13 @@ public class ByteCodeCompiler
         {
             if ( fieldNode instanceof ConstantNode || fieldNode instanceof AssignmentNode )
             {
-                /* #5.1 CONST_FIELDREF {1tag, 2class_idx, 2nAt_idx} */
+                /* #5.1.1 CONST_FIELDREF {1tag, 2class_idx, 2nAt_idx} */
                 cp_insertBlock_U1_U2_U2( TYPE_FIELDREF, 1, constPoolLength + 1 );
 
-                /* #5.2 CONST_NAMEAndTYPE {1tag, 2name_idx, 2desc_idx} */
+                /* #5.1.2 CONST_NAMEAndTYPE {1tag, 2name_idx, 2desc_idx} */
                 cp_insertBlock_U1_U2_U2( TYPE_NAMEANDTYPE, constPoolLength + 1, idxOfAttIntDesc );
 
-                /* #5.3 CONST_UTF8 {1tag, 2name_idx, tab} // DESCRIPTOR u2: I */
+                /* #5.1.3 CONST_UTF8 {1tag, 2name_idx, tab} // DESCRIPTOR u2: I */
                 idxListOfFieldConst.add( constPoolLength );
                 final String bName;
                 if ( fieldNode instanceof AssignmentNode )
@@ -232,7 +246,7 @@ public class ByteCodeCompiler
                 }
                 cp_insertBlock_U1_U2_Tab( TYPE_UTF8, bName );
 
-                /* #5.4 CONST_INT {1tag, 4value} */
+                /* #5.1.4 CONST_INT {1tag, 4value} */
                 insertCode( TYPE_INT ); // u1
                 if ( fieldNode instanceof AssignmentNode )
                 {
@@ -244,9 +258,26 @@ public class ByteCodeCompiler
                 }
                 constPoolLength++;
             }
+            else if ( fieldNode instanceof ClassVarNode )
+            {
+                /* #5.2.1 CONST_FIELDREF {1tag, 2class_idx, 2nAt_idx} */
+                cp_insertBlock_U1_U2_U2( TYPE_FIELDREF, 1, constPoolLength + 1 );
+
+                /* #5.2.2 CONST_NAMEAndTYPE {1tag, 2name_idx, 2desc_idx} */
+                cp_insertBlock_U1_U2_U2( TYPE_NAMEANDTYPE, constPoolLength + 1, idxOfAttIntDesc );
+
+                /* #5.2.3 CONST_UTF8 {1tag, 2name_idx, tab} // DESCRIPTOR u2: I */
+                idxListOfFields.add( constPoolLength );
+                cp_insertBlock_U1_U2_Tab( TYPE_UTF8, fieldNode.getName() );
+
+                /* #5.2.4 CONST_INT {1tag, 4value} */
+                insertCode( TYPE_INT ); // u1
+                insertCode( toU4( 0 ) );
+
+                constPoolLength++;
+            }
 
             /* #6+ METHODS */
-
             else if ( fieldNode instanceof MethodNode )
             {
                 /* #6.0 CONST_UTF8 DESC {(*PARA)RETURN} */
@@ -282,6 +313,23 @@ public class ByteCodeCompiler
             }
             fieldNode = fieldNode.getLink();
         }
+
+        /* Special temporary Variable for my shenanigans */
+        /* #5.3.1 CONST_FIELDREF {1tag, 2class_idx, 2nAt_idx} */
+        idxOfFuckYouTempVariable = constPoolLength;
+        cp_insertBlock_U1_U2_U2( TYPE_FIELDREF, 1, constPoolLength + 1 );
+
+        /* #5.3.2 CONST_NAMEAndTYPE {1tag, 2name_idx, 2desc_idx} */
+        cp_insertBlock_U1_U2_U2( TYPE_NAMEANDTYPE, constPoolLength + 1, idxOfAttIntDesc );
+
+        /* #5.3.3 CONST_UTF8 {1tag, 2name_idx, tab} // DESCRIPTOR u2: I */
+        cp_insertBlock_U1_U2_Tab( TYPE_UTF8, "FuckYourTemp" );
+
+        /* #5.3.4 CONST_INT {1tag, 4value} */
+        insertCode( TYPE_INT ); // u1
+        insertCode( toU4( 0 ) );
+
+        constPoolLength++;
 
         /* #7 EXTRA */
         insertPrintlnCode();
@@ -410,12 +458,13 @@ public class ByteCodeCompiler
      * u4             attribute_length;
      * u2             constantvalue_index;
      * }
-     * ToDo: I kinda think you made this wrong.
      */
     private void insertFields()
     {
-        insertCode( toU2( idxListOfFieldConst.size() ) );
+        /* Number of fields: Consts + Fields + 1 Temp */
+        insertCode( toU2( idxListOfFieldConst.size() + idxListOfFields.size() + 1 ) );
 
+        /* 1. Constants first */
         for ( int i : idxListOfFieldConst )
         {
             /* ACCESS FLAG */
@@ -435,6 +484,36 @@ public class ByteCodeCompiler
             insertCode( toU4( 2 ) );
             insertCode( toU2( i + 1 ) ); // const always +1
         }
+
+        /* 2. Fields second */
+        for ( int i : idxListOfFields )
+        {
+            /* ACCESS FLAG */
+            insertCode( toU2( MOD_STATIC_PUBLIC ) );
+
+            /* NAME INDEX */
+            insertCode( toU2( i ) );
+
+            /* DESC INDEX */
+            insertCode( toU2( idxOfAttIntDesc ) );
+
+            /* ATTRIBUTE COUNT */
+            insertCode( toU2( 0 ) );
+        }
+
+        /* 3. Temp Variable for myself */
+
+        /* ACCESS FLAG */
+        insertCode( toU2( MOD_STATIC_PUBLIC ) );
+
+        /* NAME INDEX */
+        insertCode( toU2( idxOfFuckYouTempVariable + 2 ) );
+
+        /* DESC INDEX */
+        insertCode( toU2( idxOfAttIntDesc ) );
+
+        /* ATTRIBUTE COUNT */
+        insertCode( toU2( 0 ) );
     }
 
     /**
@@ -571,6 +650,8 @@ public class ByteCodeCompiler
 
     private int codeLength_Bytes = 0;
 
+    private int lazyStack_Count = 0;
+
     /**
      * Inserts the code attribute into the byte code for one method.
      * Code_attribute {
@@ -597,16 +678,16 @@ public class ByteCodeCompiler
         insertCode( toU2( idxOfAttCode ) ); //
 
         /* #2 Length of ATT (in bytes), EXCLUDING the initial 6 bytes */
-        int lazyIdx_MethodCodeAttLength_U4 = idx;
+        final int lazyIdx_MethodCodeAttLength_U4 = idx;
         insertEmptyU4();
 
-        /* #3 MAX STACK u2 */ // ToDo
-        insertCode( toU2( 2 ) );
+        /* #3 MAX STACK u2 */
+        final int lazyIdx_StackCount_U2 = idx;
+        insertEmptyU2();
         methodCodeAttLength_Bytes += 2;
 
         /* #4 MAX LOCALS u2 */
         insertCode( toU2( calculateMaxLocals( methodNode ) ) );
-        //        insertCode( toU2( 0 ) );
         methodCodeAttLength_Bytes += 2;
 
         /* #5.1 CODE LENGTH u4 */
@@ -614,9 +695,22 @@ public class ByteCodeCompiler
         insertEmptyU4();
         methodCodeAttLength_Bytes += 4;
 
-        /* #6 CODE ENTRIES u1 */ // ToDo
-        // produceCode( methodNode, methodNode );
-        produceFakeWorkingCode();
+        /* #6 CODE ENTRIES u1 */
+        // produceFakeWorkingCode();
+        produceCode( methodNode.getLeft(), methodNode );
+        //        INode methodEntry = methodNode.getLeft();
+        //        do
+        //        {
+        //            // There always has to be at least one statement.
+        //            produceCode( methodEntry, methodNode );
+        //        }
+        //        while ( ( methodEntry = methodEntry.getLink() ) != null );
+        if ( codeLength_Bytes == 0 )
+        {
+            compileError( String.format(
+                            "Method content of \"%s\" can not be empty. Undefined local variables do not count.",
+                            methodNode.getName() ) );
+        }
         methodCodeAttLength_Bytes += codeLength_Bytes;
 
         /* #5.2 LAZY code length insert */
@@ -632,8 +726,11 @@ public class ByteCodeCompiler
 
         /* Lazy CodeLength insert and reset tracker variables */
         insertCodeAt( toU4( methodCodeAttLength_Bytes ), lazyIdx_MethodCodeAttLength_U4 );
+        insertCodeAt( toU2( lazyStack_Count ), lazyIdx_StackCount_U2 );
+
         methodCodeAttLength_Bytes = 0;
         codeLength_Bytes = 0;
+        lazyStack_Count = 0;
     }
 
     /**
@@ -653,7 +750,7 @@ public class ByteCodeCompiler
 
         if ( nodeIsMain( methodNode ) )
         {
-            localsCount = 1; // ToDo is it 1 ?
+            localsCount = 1;
         }
 
         Objekt paraObj = methodNode.getObj().getSymTable().getHead();
@@ -668,128 +765,242 @@ public class ByteCodeCompiler
 
     /**
      * Fake function to generate predefined code for verification.
+     * Prints out the first constant.
      */
     private void produceFakeWorkingCode()
     {
         codeLength_Bytes = 9;
-
         insertCode( 0xb2 ); // get static
-
         insertCode( toU2( idxOfCallOut ) ); // idx of out in const pool
-
         insertCode( 0x12 ); // ldc (load constant)
-
         insertCode( idxListOfFieldConst.get( 0 ) + 1 ); // idx of constant +1
         // insertCode( idxOfConstHello ); // Must change the method signature of println
-
         insertCode( 0xb6 ); // invoke virtual
-
         insertCode( toU2( idxOfCallPrintln ) ); // idx of println
-
         insertCode( 0xb1 ); // return void
     }
 
     /**
-     * Produces the actual machine instructions for a given method within the code attribute recursively.
+     * Produces the actual machine instructions for a given method
+     * within the code attribute recursively.
      * Returns length of produced code in bytes.
-     * Tracks code length in bytes via an external field.
+     * Adds number of bytes produced to @(codeLength_Bytes).
      */
-    private void produceCode( INode node, INode methodNode )
+    private void produceCode( INode node, INode currMethodNode )
     {
         if ( node == null )
         {
             return;
         }
-        produceCode( node.getLeft(), methodNode );
-        produceCode( node.getRight(), methodNode );
 
-        int numOfInstructions = 0;
+        checkFirstVisit( node );
+
+        produceCode( node.getLeft(), currMethodNode );
+        produceCode( node.getRight(), currMethodNode );
 
         switch ( node.getNodeClasz() )
         {
             case BINOPS:
                 if ( node.subClaszEquals( ASSIGNMENT ) )
                 {
-
+                    /* If a class var */
+                    if ( node.getLeft().getObj().objClazEquals( ObjektConst.CLASS_VAR ) )
+                    {
+                        insertCode( 0xb3 ); // putstatic: put var in field
+                        insertCode( toU2( findIdxOfField( node.getLeft() ) ) ); // idx of field in const pool
+                        codeLength_Bytes += 3;
+                    }
+                    /* If a class var */
+                    else
+                    {
+                        insertCode( 0x36 ); // istore: stores int at local var_idx
+                        insertCode( getIdxOfLocalVariableInMethod( currMethodNode, node.getLeft().getName() ) );
+                        codeLength_Bytes += 2;
+                    }
                 }
+                /* For cmp operators, remember idx of goto in tmpStack */
                 else if ( node.subClaszEquals( EQUALS ) )
                 {
                     insertCode( 0xA5 ); // if_acmpeq
-                    numOfInstructions = 1;
+                    lazy_idxOfElse_U2 = idxTempStack;
+                    idxOfElse_In_code = codeLength_Bytes;
+                    insertEmptyU2();
+                    codeLength_Bytes += 3;
                 }
                 else if ( node.subClaszEquals( LESSTHAN ) )
                 {
                     insertCode( 0xA1 ); // if_icmplt
-                    numOfInstructions = 1;
+                    lazy_idxOfElse_U2 = idxTempStack;
+                    idxOfElse_In_code = codeLength_Bytes;
+                    insertEmptyU2();
+                    codeLength_Bytes += 3;
                 }
                 else if ( node.subClaszEquals( LESSEQUALSTHAN ) )
                 {
                     insertCode( 0xA4 ); // if_icmple
-                    numOfInstructions = 1;
+                    lazy_idxOfElse_U2 = idxTempStack;
+                    idxOfElse_In_code = codeLength_Bytes;
+                    insertEmptyU2();
+                    codeLength_Bytes += 3;
                 }
                 else if ( node.subClaszEquals( GREATERTHAN ) )
                 {
                     insertCode( 0xA3 ); // if_icmpgt
-                    numOfInstructions = 1;
+                    lazy_idxOfElse_U2 = idxTempStack;
+                    idxOfElse_In_code = codeLength_Bytes;
+                    insertEmptyU2();
+                    codeLength_Bytes += 3;
                 }
                 else if ( node.subClaszEquals( GREATEREQUALSTHAN ) )
                 {
                     insertCode( 0xA2 ); // if_icmpge
-                    numOfInstructions = 1;
+                    lazy_idxOfElse_U2 = idxTempStack;
+                    idxOfElse_In_code = codeLength_Bytes;
+                    insertEmptyU2();
+                    codeLength_Bytes += 3;
                 }
                 else if ( node.subClaszEquals( TIMES ) )
                 {
                     insertCode( 0x68 ); // imul
-                    numOfInstructions = 1;
+                    codeLength_Bytes += 1;
                 }
                 else if ( node.subClaszEquals( DIV ) )
                 {
                     insertCode( 0x6c ); // idiv
-                    numOfInstructions = 1;
+                    codeLength_Bytes += 1;
                 }
                 else if ( node.subClaszEquals( PLUS ) )
                 {
                     insertCode( 0x60 ); // iadd
-                    numOfInstructions = 1;
+                    codeLength_Bytes += 1;
                 }
                 else if ( node.subClaszEquals( BO_MINUS ) )
                 {
                     insertCode( 0x64 ); // isub
-                    numOfInstructions = 1;
+                    codeLength_Bytes += 1;
                 }
                 break;
-            case METHOD:
+            /* Is not identified as a constant within the method, is a METHOD_VAR. */
+            case CONSTANT:
+                /* Is not identified as a class_var within the method, is a METHOD_VAR. */
+            case CLASS_VAR:
             {
-
                 break;
             }
+            case METHOD:
+            {
+                /* Special handling for println because we aint linking shit */
+                if ( node.getObj().getName().equals( "println" ) && node.getObj().getParaCount() == 1
+                                && node.getObj().getReturnType() != Type.Int )
+                {
+
+                    /* Store last var on stack temporarily */
+                    insertCode( 0xb3 ); // putstatic: put var in tmp_var
+                    insertCode( toU2( idxOfFuckYouTempVariable ) ); // idx of tmp_var in const pool
+
+                    insertCode( 0xb2 ); // getstatic: get from constpool
+                    insertCode( toU2( idxOfCallOut ) ); // idx of out in const pool
+                    lazyStack_Count++;
+
+                    insertCode( 0xb2 ); // getstatic: get from constpool
+                    insertCode( toU2( idxOfFuckYouTempVariable ) ); // idx of tmp_var in const pool
+                    lazyStack_Count++;
+
+                    insertCode( 0xb6 ); // invoke virtual
+                    insertCode( toU2( idxOfCallPrintln ) ); // idx of println
+                    lazyStack_Count++;
+
+                    codeLength_Bytes += 12;
+                }
+                /* Normal methods just get invoked with the right paras on the stack */
+                else
+                {
+                    insertCode( 0xb8 ); // invokestatic: call static method
+                    insertCode( toU2( getMethodIdxInPoolFromName( node ) ) );
+                    lazyStack_Count++;
+                    codeLength_Bytes += 3;
+                }
+                break;
+            }
+            /* Is a local variable. */
+            case PARA:
+            {
+                /* Is not identified as a class_var within the method, is a METHOD_VAR. */
+                break;
+            }
+            /* Is also a local variable, sadly can be a number or a constant. */
             case METHOD_VAR:
             {
+                /* If a number: Place on stack */
                 if ( node instanceof NumberNode )
                 {
-                    if ( node.hasConstant() )
+                    try
                     {
-                        insertCode( 0x11 ); // bipush, there is no ipush
-                        insertCode( toU2( node.getConstant() ) );
-                        numOfInstructions = 3;
+                        insertCode( 0x10 );
+                        insertCode( Integer.parseInt( node.getName() ) );
+                        lazyStack_Count++;
+                        codeLength_Bytes += 2;
                     }
-                    // TODO: else?
+                    catch ( Exception e )
+                    {
+                        compileError( "Dev made a mistake: Shouldn't all numbers have a value?!" );
+                    }
                 }
-                else if ( node instanceof MethodVarNode )
+                /* Else if a constant: Place on stack, cant be assigned */
+                else if ( node.getObj().objClazEquals( ObjektConst.CONSTANT ) )
                 {
-                    if ( node.getObj().hasValue() )
+                    insertCode( 0x12 ); // ldc: Load val from const_pool at idx
+                    insertCode( findIdxOfConst( node ) );
+                    lazyStack_Count++;
+                    codeLength_Bytes += 2;
+                    break;
+                }
+                else if ( node.getObj().objClazEquals( ObjektConst.CLASS_VAR ) )
+                {
+                    /* Ignore if left of the assignment, store else */
+                    if ( !node.isPartOfAssignment() )
                     {
-                        insertCode( 0x15 ); // iload
-                        insertCode( toU2( node.getObj().getValue() ) );
-                        numOfInstructions = 3;
+                        insertCode( 0xb2 ); // getstatic: load class_var on stack
+                        insertCode( toU2( findIdxOfField( node ) ) ); // idx of class_var in const pool
+                        lazyStack_Count++;
+                        codeLength_Bytes += 3;
                     }
-                    // TODO: else?
+                    break;
+                }
+                /* Else if a local variable or a parameter */
+                else if ( !node.isPartOfAssignment() )
+                {
+                    insertCode( 0x15 ); // iload
+                    insertCode( getIdxOfLocalVariableInMethod( currMethodNode, node.getName() ) );
+                    lazyStack_Count++;
+                    codeLength_Bytes += 2;
                 }
                 break;
             }
             case IF:
             {
+                /* On exiting if remember: [goto ?idxOfFin] = idxTmpStack, insertEmptyU2() */
+                insertCode( 0xA7 ); // goto idx
+                lazy_idxOfIfElseEnd_U2 = idxTempStack;
+                idxOfIfElseEnd_In_code = codeLength_Bytes;
+                insertEmptyU2();
+                codeLength_Bytes += 3;
 
+                /* On second enter ifElse (always after exit if): lazy insert codeLength_Byte+1 at lazy_idxOfElse_U2 */
+                //                insertCodeAt( toU2( codeLength_Bytes - idxOfElse_In_code ), lazy_idxOfElse_U2 );
+
+                int idx = 2;
+                /* Offset of jump is current idx in bytecode */
+                insertCodeAt( toU2( codeLength_Bytes - idxOfElse_In_code ), lazy_idxOfElse_U2 );
+                break;
+            }
+            case IFELSE:
+            {
+                /* On exit ifElse (switch case): lazy insert codeLength_Byte+1 at lazy_idxOfIfElseEnd_U2 */
+                insertCodeAt( toU2( codeLength_Bytes - idxOfIfElseEnd_In_code ), lazy_idxOfIfElseEnd_U2 );
+
+                /* Insert tmpStack in code */
+                flushTempStackInCode();
                 break;
             }
             case WHILE:
@@ -799,15 +1010,15 @@ public class ByteCodeCompiler
             }
             case RETURN:
             {
-                if ( methodNode.getObj().getReturnType().equals( Type.Int ) )
+                if ( currMethodNode.getObj().getReturnType().equals( Type.Int ) )
                 {
                     insertCode( 0xAC ); // ireturn
-                    numOfInstructions = 1;
+                    codeLength_Bytes += 1;
                 }
                 else
                 {
                     insertCode( 0xB1 ); // return
-                    numOfInstructions = 1;
+                    codeLength_Bytes += 1;
                 }
 
                 break;
@@ -818,7 +1029,158 @@ public class ByteCodeCompiler
             }
         }
 
-        codeLength_Bytes += numOfInstructions;
+        if ( node.getLink() != null )
+            produceCode( node.getLink(), currMethodNode );
+    }
+
+    /* Idx in tempStack for goto conditions. */
+
+    private int lazy_idxOfElse_U2 = -1; // if condition is false -> goto else
+
+    private int idxOfElse_In_code = -1;
+
+    private int lazy_idxOfIfElseEnd_U2 = -1; // if condition is true and finished -> goto end of else
+
+    private int idxOfIfElseEnd_In_code = -1;
+
+    /**
+     * Should ve used the visitor pattern but whatever by now.
+     * .
+     * Catches ifElse node, everything node below will be handled here.
+     * 0. On first enter ifElse (not switch case): useTempStack = true
+     * 1. On compare remember: [comp ?idxOfElse] = idxTmpStack, insertEmptyU2()
+     * 2. On exiting if (in switch case) remember: [goto ?idxOfFin] = idxTmpStack, insertEmptyU2()
+     * 2.1. On second enter ifElse  (not switch case): idxTmpStack[idxOfElse] = u2(codeLength_Bytes+1)
+     * 3. On exit ifElse (switch case): idxTmpStack[idxOfFin] = u2(codeLength_Bytes)
+     * 3.1 insert tmpStack in code
+     * .
+     * While?
+     */
+    private void checkFirstVisit( INode node )
+    {
+        if ( node.classEquals( NodeClasz.IFELSE ) )
+        {
+            useTempStack = true;
+        }
+    }
+
+    /* Honestly i should use a better data structure for storing the idxs of consant pool items
+     * but i dont care anymore, i am so close to finishing.
+     * Its idx -2 because thats the realtive index in the constant pool, yeah i know ... */
+
+    private int findIdxOfConst( INode node )
+    {
+        /* Find first Const */
+        INode constNode = root.getLeft();
+        while ( constNode.getLink() != null )
+        {
+            if ( constNode instanceof ConstantNode || constNode instanceof AssignmentNode )
+            {
+                break;
+            }
+            constNode = constNode.getLink();
+        }
+
+        for ( int i : idxListOfFieldConst )
+        {
+            if ( constNode instanceof AssignmentNode )
+            {
+                if ( node.getName().equals( constNode.getLeft().getName() ) )
+                {
+                    return i + 1;
+                }
+            }
+            if ( node.getName().equals( constNode.getName() ) )
+            {
+                return i + 1;
+            }
+            constNode = constNode.getLink();
+        }
+
+        compileError( "ups 1" );
+        return -1;
+    }
+
+    private int findIdxOfField( INode node )
+    {
+        /* Find first Const */
+        INode fieldNode = root.getLeft();
+        while ( fieldNode.getLink() != null )
+        {
+            if ( fieldNode instanceof ClassVarNode )
+            {
+                break;
+            }
+            fieldNode = fieldNode.getLink();
+        }
+
+        for ( int i : idxListOfFields )
+        {
+            if ( node.getName().equals( fieldNode.getName() ) )
+            {
+                return i - 2;
+            }
+            fieldNode = fieldNode.getLink();
+        }
+
+        compileError( "ups 2" );
+        return -1;
+    }
+
+    private int getMethodIdxInPoolFromName( INode node )
+    {
+        /* Find first Method */
+        INode methodNode = root.getLeft();
+        while ( methodNode.getLink() != null )
+        {
+            if ( methodNode instanceof MethodNode )
+            {
+                break;
+            }
+            methodNode = methodNode.getLink();
+        }
+
+        for ( int i : idxListOfFieldMethod )
+        {
+            if ( node.getName().equals( methodNode.getName() ) && node.getObj().getParaCount() == methodNode.getObj()
+                            .getParaCount() )
+            {
+                /* BUG cant find return type for method_call: void, no parameters */
+                if ( node.getObj().getReturnType() == null || methodNode.getObj().getReturnType() == node.getObj()
+                                .getReturnType() )
+                {
+                    return i - 2;
+                }
+            }
+            methodNode = methodNode.getLink();
+        }
+
+        compileError( "ups 3" );
+        return -1;
+    }
+
+    /**
+     * Returns the numbered place of the parameter or local variable of a method.
+     */
+    private int getIdxOfLocalVariableInMethod( final INode methodNode, final String varName )
+    {
+        int varCnt = 0;
+        if ( nodeIsMain( methodNode ) )
+        {
+            varCnt++;
+        }
+        Objekt variable = methodNode.getObj().getSymTable().getHead();
+        while ( variable != null )
+        {
+            if ( variable.getName().equals( varName ) )
+            {
+                return varCnt;
+            }
+            varCnt++;
+            variable = variable.getNextObj();
+        }
+        compileError( "Dev made a mistake, searching for a variable that is not in the method." );
+        return -1;
     }
 
     /**
@@ -932,11 +1294,42 @@ public class ByteCodeCompiler
         insertEmptyU2();
     }
 
+    private void flushTempStackInCode()
+    {
+        useTempStack = false;
+        insertCode( tempStack );
+        this.tempStack = new byte[CODE_MAX];
+        for ( int i = 0; i < CODE_MAX; i++ )
+        {
+            tempStack[i] = ESCAPE_SEQ;
+        }
+        this.idxTempStack = 0;
+    }
+
     private void insertCode( int iin )
     {
         byte in = (byte) iin;
         if ( idx < CODE_MAX )
-            code[idx++] = in;
+        {
+            if ( useTempStack )
+                tempStack[idxTempStack++] = in;
+            else
+                code[idx++] = in;
+        }
+        else
+            compileError( "Your code is too long." );
+    }
+
+    private void insertCodeAt( int in, int at )
+    {
+        if ( idx < CODE_MAX )
+        {
+            if ( useTempStack )
+                tempStack[at++] = (byte) in;
+            else
+                code[at++] = (byte) in;
+
+        }
         else
             compileError( "Your code is too long." );
     }
@@ -951,7 +1344,10 @@ public class ByteCodeCompiler
                 {
                     break;
                 }
-                code[idx++] = b;
+                if ( useTempStack )
+                    tempStack[idxTempStack++] = b;
+                else
+                    code[idx++] = b;
             }
         }
         else
@@ -985,7 +1381,10 @@ public class ByteCodeCompiler
                 {
                     break;
                 }
-                code[at++] = b;
+                if ( useTempStack )
+                    tempStack[at++] = b;
+                else
+                    code[at++] = b;
             }
         }
         else
