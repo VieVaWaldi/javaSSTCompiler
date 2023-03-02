@@ -30,10 +30,8 @@ import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.nio.ShortBuffer;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
-import java.util.Arrays;
 
 import compiler.abstractsyntaxtree.INode;
 import compiler.abstractsyntaxtree.NodeClasz;
@@ -92,14 +90,20 @@ public class ByteCodeCompiler
         try
         {
             FileOutputStream os = new FileOutputStream( fileName );
-            for ( byte b : code )
+            // for ( byte b : code )
+            // {
+            //     if ( b == ESCAPE_SEQ )
+            //     {
+            //         break;
+            //     }
+            //     os.write( b );
+            // }
+
+            for ( int i = 0; i < idx; i++ )
             {
-                if ( b == ESCAPE_SEQ )
-                {
-                    break;
-                }
-                os.write( b );
+                os.write( code[i] );
             }
+
             os.close();
         }
         catch ( IOException e )
@@ -818,45 +822,86 @@ public class ByteCodeCompiler
                 /* For cmp operators, remember idx of goto in tmpStack */
                 else if ( node.subClaszEquals( EQUALS ) )
                 {
-                    insertCode( 0x9F ); // if_icmpeq, ints are equal
-                    lazy_idxOfElse_U2_List.add( visitIfElseIdx, idx );
-                    idxOfElse_In_code_List.add( visitIfElseIdx, codeLength_Bytes );
+                    insertCode( 0xa0 ); // if_icmpeq, ints are equal
+                    if ( lastNodeWasIfNotWhile )
+                    {
+                        lazy_idxOfElse_U2_List.add( visitIfElseIdx, idx );
+                        idxOfElse_In_code_List.add( visitIfElseIdx, codeLength_Bytes );
+                    }
+                    else
+                    {
+                        lazy_idxOfExitWhile_List.add( visitWhileIdx, idx );
+                        idxOfExitWhile_In_code_List.add( visitWhileIdx, codeLength_Bytes );
+                        idxOfRepeatWhile_In_code_List.add( visitWhileIdx, codeLength_Bytes );
+                    }
                     insertEmptyU2();
                     codeLength_Bytes += 3;
                 }
                 else if ( node.subClaszEquals( LESSTHAN ) )
                 {
-                    // insertCode( 0xA1 ); // if_icmplt
-                    insertCode( 0xA3 ); // if_icmpgt
-                    lazy_idxOfElse_U2_List.add( visitIfElseIdx, idx );
-                    idxOfElse_In_code_List.add( visitIfElseIdx, codeLength_Bytes );
+                    insertCode( 0xA2 ); // if_icmpgt
+                    if ( lastNodeWasIfNotWhile )
+                    {
+                        lazy_idxOfElse_U2_List.add( visitIfElseIdx, idx );
+                        idxOfElse_In_code_List.add( visitIfElseIdx, codeLength_Bytes );
+                    }
+                    else
+                    {
+                        lazy_idxOfExitWhile_List.add( visitWhileIdx, idx );
+                        idxOfExitWhile_In_code_List.add( visitWhileIdx, codeLength_Bytes );
+                        idxOfRepeatWhile_In_code_List.add( visitWhileIdx, codeLength_Bytes );
+                    }
                     insertEmptyU2();
                     codeLength_Bytes += 3;
                 }
                 else if ( node.subClaszEquals( LESSEQUALSTHAN ) )
                 {
-                    // insertCode( 0xA4 ); // if_icmple
-                    insertCode( 0xA2 ); // if_icmpge
-                    lazy_idxOfElse_U2_List.add( visitIfElseIdx, idx );
-                    idxOfElse_In_code_List.add( visitIfElseIdx, codeLength_Bytes );
+                    insertCode( 0xA3 ); // if_icmpge
+                    if ( lastNodeWasIfNotWhile )
+                    {
+                        lazy_idxOfElse_U2_List.add( visitIfElseIdx, idx );
+                        idxOfElse_In_code_List.add( visitIfElseIdx, codeLength_Bytes );
+                    }
+                    else
+                    {
+                        lazy_idxOfExitWhile_List.add( visitWhileIdx, idx );
+                        idxOfExitWhile_In_code_List.add( visitWhileIdx, codeLength_Bytes );
+                        idxOfRepeatWhile_In_code_List.add( visitWhileIdx, codeLength_Bytes );
+                    }
                     insertEmptyU2();
                     codeLength_Bytes += 3;
                 }
                 else if ( node.subClaszEquals( GREATERTHAN ) )
                 {
-                    // insertCode( 0xA3 ); // if_icmpgt
-                    insertCode( 0xA1 ); // if_icmplt
-                    lazy_idxOfElse_U2_List.add( visitIfElseIdx, idx );
-                    idxOfElse_In_code_List.add( visitIfElseIdx, codeLength_Bytes );
+                    insertCode( 0xA4 ); // if_icmplt
+                    if ( lastNodeWasIfNotWhile )
+                    {
+                        lazy_idxOfElse_U2_List.add( visitIfElseIdx, idx );
+                        idxOfElse_In_code_List.add( visitIfElseIdx, codeLength_Bytes );
+                    }
+                    else
+                    {
+                        lazy_idxOfExitWhile_List.add( visitWhileIdx, idx );
+                        idxOfExitWhile_In_code_List.add( visitWhileIdx, codeLength_Bytes );
+                        idxOfRepeatWhile_In_code_List.add( visitWhileIdx, codeLength_Bytes );
+                    }
                     insertEmptyU2();
                     codeLength_Bytes += 3;
                 }
                 else if ( node.subClaszEquals( GREATEREQUALSTHAN ) )
                 {
-                    // insertCode( 0xA2 ); // if_icmpge
-                    insertCode( 0xA4 ); // if_icmple
-                    lazy_idxOfElse_U2_List.add( visitIfElseIdx, idx );
-                    idxOfElse_In_code_List.add( visitIfElseIdx, codeLength_Bytes );
+                    insertCode( 0xA1 ); // if_icmple
+                    if ( lastNodeWasIfNotWhile )
+                    {
+                        lazy_idxOfElse_U2_List.add( visitIfElseIdx, idx );
+                        idxOfElse_In_code_List.add( visitIfElseIdx, codeLength_Bytes );
+                    }
+                    else
+                    {
+                        lazy_idxOfExitWhile_List.add( visitWhileIdx, idx );
+                        idxOfExitWhile_In_code_List.add( visitWhileIdx, codeLength_Bytes );
+                        idxOfRepeatWhile_In_code_List.add( visitWhileIdx, codeLength_Bytes );
+                    }
                     insertEmptyU2();
                     codeLength_Bytes += 3;
                 }
@@ -988,7 +1033,7 @@ public class ByteCodeCompiler
                 codeLength_Bytes += 3;
 
                 /* On second enter ifElse (always after exit if): lazy insert codeLength_Byte+1 at lazy_idxOfElse_U2 */
-                //                insertCodeAt( toU2( codeLength_Bytes - idxOfElse_In_code ), lazy_idxOfElse_U2 );
+                // insertCodeAt( toU2( codeLength_Bytes - idxOfElse_In_code ), lazy_idxOfElse_U2 );
 
                 int idx = 2;
                 /* Offset of jump is current idx in bytecode */
@@ -1008,7 +1053,16 @@ public class ByteCodeCompiler
             }
             case WHILE:
             {
+                /* On exit while: lazy insert while(false) -> go to end.  while(true) goto lazyIdx eval while*/
+                insertCodeAt( toU2( codeLength_Bytes - idxOfExitWhile_In_code_List.get( visitWhileIdx ) + 3 ),
+                                lazy_idxOfExitWhile_List.get( visitWhileIdx ) );
+                insertCode( 0xA7 ); // goto opcode
 
+                insertCode( toU2( idxOfRepeatWhile_In_code_List.get( visitWhileIdx ) -4 - codeLength_Bytes ) );
+                codeLength_Bytes += 3;
+
+                /* Exit ifElse nesting. */
+                visitWhileIdx--;
                 break;
             }
             case RETURN:
@@ -1036,7 +1090,12 @@ public class ByteCodeCompiler
             produceCode( node.getLink(), currMethodNode );
     }
 
+    private boolean lastNodeWasIfNotWhile = true;
+
     /* Idx in tempStack for goto conditions, idx in list maps on mapping of IfElse. */
+
+    /* visitIfElseIdx describes idx in list for current ifElse nesting.  */
+    private int visitIfElseIdx = -1;
 
     // if condition is false -> goto else
     private ArrayList<Integer> lazy_idxOfElse_U2_List = new ArrayList<>();
@@ -1048,27 +1107,36 @@ public class ByteCodeCompiler
 
     private ArrayList<Integer> idxOfIfElseEnd_In_code_List = new ArrayList<>();
 
-    /* visitIfElseIdx describes idx in list for current ifElse nesting.  */
+    /* WHILE */
+    private int visitWhileIdx = -1;
 
-    private int visitIfElseIdx = -1;
+    private ArrayList<Integer> lazy_idxOfExitWhile_List = new ArrayList<>();
+
+    private ArrayList<Integer> idxOfExitWhile_In_code_List = new ArrayList<>();
+
+    private ArrayList<Integer> lazy_idxOfRepeatWhile_List = new ArrayList<>();
+
+    private ArrayList<Integer> idxOfRepeatWhile_In_code_List = new ArrayList<>();
 
     /**
      * Should ve used the visitor pattern but whatever by now.
      * .
      * Catches ifElse node, everything node below will be handled here.
-     * 0. On first enter ifElse (not switch case): useTempStack = true
+     * ! DEPRECATED comment !
      * 1. On compare remember: [comp ?idxOfElse] = idxTmpStack, insertEmptyU2()
      * 2. On exiting if (in switch case) remember: [goto ?idxOfFin] = idxTmpStack, insertEmptyU2()
      * 2.1. On second enter ifElse  (not switch case): idxTmpStack[idxOfElse] = u2(codeLength_Bytes+1)
      * 3. On exit ifElse (switch case): idxTmpStack[idxOfFin] = u2(codeLength_Bytes)
      * 3.1 insert tmpStack in code
      * .
-     * While?
+     * Catches While node
+     * 1.
      */
     private void checkFirstVisit( INode node )
     {
         if ( node.classEquals( NodeClasz.IFELSE ) )
         {
+            lastNodeWasIfNotWhile = true;
             visitIfElseIdx++;
             /* Add one item for each nesting */
             lazy_idxOfElse_U2_List.add( 0 );
@@ -1076,12 +1144,22 @@ public class ByteCodeCompiler
             lazy_idxOfIfElseEnd_U2_List.add( 0 );
             idxOfIfElseEnd_In_code_List.add( 0 );
         }
+
+        if ( node.classEquals( NodeClasz.WHILE ) )
+        {
+            lastNodeWasIfNotWhile = false;
+            visitWhileIdx++;
+            /* Add one item for each nesting */
+            lazy_idxOfExitWhile_List.add( 0 );
+            idxOfExitWhile_In_code_List.add( 0 );
+            lazy_idxOfRepeatWhile_List.add( 0 );
+            idxOfRepeatWhile_In_code_List.add( 0 );
+        }
     }
 
     /* Honestly i should use a better data structure for storing the idxs of consant pool items
      * but i dont care anymore, i am so close to finishing.
      * Its idx -2 because thats the realtive index in the constant pool, yeah i know ... */
-
     private int findIdxOfConst( INode node )
     {
         /* Find first Const */
@@ -1284,6 +1362,13 @@ public class ByteCodeCompiler
         return bb.array();
     }
 
+    private byte[] toU2( short value )
+    {
+        final ByteBuffer bb = ByteBuffer.allocate( 2 );
+        bb.putShort( value );
+        return bb.array();
+    }
+
     /**
      * Always uses BIG ENDIAN. Undefined behaviour when int is bigger than 4 bytes.
      *
@@ -1313,17 +1398,17 @@ public class ByteCodeCompiler
         byte in = (byte) iin;
         if ( idx < CODE_MAX )
         {
-            code[idx++] = in;
+            code[idx++] = (byte) in;
         }
         else
             compileError( "Your code is too long." );
     }
 
-    private void insertCodeAt( int in, int at )
+    private void insertCode( byte iin )
     {
         if ( idx < CODE_MAX )
         {
-            code[at++] = (byte) in;
+            code[idx++] = iin;
         }
         else
             compileError( "Your code is too long." );
@@ -1335,10 +1420,10 @@ public class ByteCodeCompiler
         {
             for ( byte b : in )
             {
-                if ( b == ESCAPE_SEQ )
-                {
-                    break;
-                }
+                // if ( b == ESCAPE_SEQ )
+                //                {
+                //                    break;
+                //                }
                 code[idx++] = b;
             }
         }
@@ -1352,10 +1437,10 @@ public class ByteCodeCompiler
         {
             for ( int b : in )
             {
-                if ( b == ESCAPE_SEQ )
-                {
-                    break;
-                }
+                // if ( b == ESCAPE_SEQ )
+                //                {
+                //                    break;
+                //                }
                 code[idx++] = (byte) b;
             }
         }
@@ -1369,10 +1454,10 @@ public class ByteCodeCompiler
         {
             for ( byte b : in )
             {
-                if ( b == ESCAPE_SEQ )
-                {
-                    break;
-                }
+                // if ( b == ESCAPE_SEQ )
+                // {
+                //     break;
+                // }
                 code[at++] = b;
             }
         }

@@ -4,14 +4,11 @@ public class Test
 
     	public static void main( String[] args )
 	{
-		int a = 10;
-		if (a < 11)
+		int a = 3;
+		while (a > 1)
 		{
-			a = 12;
+			a = a -1;
 		}
-		else
-		{
-			a = 13;
-		}
+		System.out.println(a);
 	}
 }
